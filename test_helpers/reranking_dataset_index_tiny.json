@@ -1,0 +1,216 @@
+{
+    "squad": {
+        "dataset_name": "squad",
+        "description": "Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset, consisting of questions posed by crowdworkers on a set of Wikipedia articles, where the answer to every question is a segment of text, or span, from the corresponding reading passage, or the question might be unanswerable.",
+        "downloads": 155401,
+        "configs": {
+            "plain_text": {
+                "config_name": "plain_text",
+                "sample_row": "{\"id\": \"\\\"5733be284776f41900661182\\\"\", \"title\": \"\\\"University_of_Notre_Dame\\\"\", \"context\": \"\\\"Architecturally, the school has a Catholic charac...\", \"question\": \"\\\"To whom did the Virgin Mary allegedly appear in 1...\", \"answers_text\": \"[\\\"Saint Bernadette Soubirous\\\"]\", \"answers_answer_start\": \"[515]\"}",
+                "columns": [
+                    "id",
+                    "title",
+                    "context",
+                    "question",
+                    "answers_text",
+                    "answers_answer_start"
+                ],
+                "columns_mapping": {
+                    "id": "id",
+                    "title": "title",
+                    "context": "context",
+                    "question": "question",
+                    "answers.text": "answers_text",
+                    "answers.answer_start": "answers_answer_start"
+                },
+                "dataset_description": "Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset, consisting of questions posed by crowdworkers on a set of Wikipedia articles, where the answer to every question is a segment of text, or span, from the corresponding reading passage, or the question might be unanswerable.\n",
+                "dataset_name": "squad"
+            }
+        },
+        "tags": [
+            "task_categories:question-answering",
+            "task_ids:extractive-qa",
+            "annotations_creators:crowdsourced",
+            "multilinguality:monolingual",
+            "source_datasets:extended|wikipedia",
+            "language:en"
+        ],
+        "is_gated": false
+    },
+    "codeparrot/apps": {
+        "dataset_name": "codeparrot/apps",
+        "description": "APPS is a benchmark for Python code generation, it includes 10,000 problems, which range from having simple oneline solutions to being substantial algorithmic challenges, for more details please refer to this paper: https://arxiv.org/pdf/2105.09938.pdf.",
+        "downloads": 23087,
+        "configs": {
+            "all": {
+                "config_name": "all",
+                "sample_row": "{\"problem_id\": \"0\", \"question\": \"\\\"Polycarp has $n$ different binary words. A word c...\", \"solutions\": \"\\\"[\\\\\\\"for _ in range(int(input())):\\\\\\\\n    n = int(in...\", \"input_output\": \"\\\"{\\\\n  \\\\\\\"inputs\\\\\\\": [\\\\n    \\\\\\\"4\\\\\\\\n4\\\\\\\\n0001\\\\\\\\n1000\\\\\\\\n0...\", \"difficulty\": \"\\\"interview\\\"\", \"url\": \"\\\"https://codeforces.com/problemset/problem/1259/D\\\"...\", \"starter_code\": \"\\\"\\\"\"}",
+                "columns": [
+                    "problem_id",
+                    "question",
+                    "solutions",
+                    "input_output",
+                    "difficulty",
+                    "url",
+                    "starter_code"
+                ],
+                "columns_mapping": {
+                    "problem_id": "problem_id",
+                    "question": "question",
+                    "solutions": "solutions",
+                    "input_output": "input_output",
+                    "difficulty": "difficulty",
+                    "url": "url",
+                    "starter_code": "starter_code"
+                },
+                "dataset_description": "APPS is a benchmark for Python code generation, it includes 10,000 problems, which range from having simple oneline solutions to being substantial algorithmic challenges, for more details please refer to this paper: https://arxiv.org/pdf/2105.09938.pdf.\n",
+                "dataset_name": "codeparrot/apps"
+            },
+            "introductory": {
+                "config_name": "introductory",
+                "sample_row": "{\"problem_id\": \"2361\", \"question\": \"\\\"You are given an array $a$ of length $n$ consisti...\", \"solutions\": \"\\\"[\\\\\\\"from collections import defaultdict as dd\\\\\\\\nfr...\", \"input_output\": \"\\\"{\\\\\\\"inputs\\\\\\\": [\\\\\\\"6\\\\\\\\n1\\\\\\\\n2\\\\\\\\n3\\\\\\\\n4\\\\\\\\n5\\\\\\\\n6\\\\\\\\n\\\\\\\"], ...\", \"difficulty\": \"\\\"introductory\\\"\", \"url\": \"\\\"https://codeforces.com/problemset/problem/1353/D\\\"...\", \"starter_code\": \"\\\"\\\"\"}",
+                "columns": [
+                    "problem_id",
+                    "question",
+                    "solutions",
+                    "input_output",
+                    "difficulty",
+                    "url",
+                    "starter_code"
+                ],
+                "columns_mapping": {
+                    "problem_id": "problem_id",
+                    "question": "question",
+                    "solutions": "solutions",
+                    "input_output": "input_output",
+                    "difficulty": "difficulty",
+                    "url": "url",
+                    "starter_code": "starter_code"
+                },
+                "dataset_description": "APPS is a benchmark for Python code generation, it includes 10,000 problems, which range from having simple oneline solutions to being substantial algorithmic challenges, for more details please refer to this paper: https://arxiv.org/pdf/2105.09938.pdf.\n",
+                "dataset_name": "codeparrot/apps"
+            },
+            "interview": {
+                "config_name": "interview",
+                "sample_row": "{\"problem_id\": \"0\", \"question\": \"\\\"Polycarp has $n$ different binary words. A word c...\", \"solutions\": \"\\\"[\\\\\\\"for _ in range(int(input())):\\\\\\\\n    n = int(in...\", \"input_output\": \"\\\"{\\\\n  \\\\\\\"inputs\\\\\\\": [\\\\n    \\\\\\\"4\\\\\\\\n4\\\\\\\\n0001\\\\\\\\n1000\\\\\\\\n0...\", \"difficulty\": \"\\\"interview\\\"\", \"url\": \"\\\"https://codeforces.com/problemset/problem/1259/D\\\"...\", \"starter_code\": \"\\\"\\\"\"}",
+                "columns": [
+                    "problem_id",
+                    "question",
+                    "solutions",
+                    "input_output",
+                    "difficulty",
+                    "url",
+                    "starter_code"
+                ],
+                "columns_mapping": {
+                    "problem_id": "problem_id",
+                    "question": "question",
+                    "solutions": "solutions",
+                    "input_output": "input_output",
+                    "difficulty": "difficulty",
+                    "url": "url",
+                    "starter_code": "starter_code"
+                },
+                "dataset_description": "APPS is a benchmark for Python code generation, it includes 10,000 problems, which range from having simple oneline solutions to being substantial algorithmic challenges, for more details please refer to this paper: https://arxiv.org/pdf/2105.09938.pdf.\n",
+                "dataset_name": "codeparrot/apps"
+            },
+            "competition": {
+                "config_name": "competition",
+                "sample_row": "{\"problem_id\": \"2000\", \"question\": \"\\\"Codefortia is a small island country located some...\", \"solutions\": \"\\\"[\\\\\\\"import heapq\\\\\\\\nn,m,a,b=map(int,input().split()...\", \"input_output\": \"\\\"{\\\\n  \\\\\\\"inputs\\\\\\\": [\\\\n    \\\\\\\"5 5 20 25\\\\\\\\n1 2 25\\\\\\\\n2 ...\", \"difficulty\": \"\\\"competition\\\"\", \"url\": \"\\\"https://codeforces.com/problemset/problem/1149/D\\\"...\", \"starter_code\": \"\\\"\\\"\"}",
+                "columns": [
+                    "problem_id",
+                    "question",
+                    "solutions",
+                    "input_output",
+                    "difficulty",
+                    "url",
+                    "starter_code"
+                ],
+                "columns_mapping": {
+                    "problem_id": "problem_id",
+                    "question": "question",
+                    "solutions": "solutions",
+                    "input_output": "input_output",
+                    "difficulty": "difficulty",
+                    "url": "url",
+                    "starter_code": "starter_code"
+                },
+                "dataset_description": "APPS is a benchmark for Python code generation, it includes 10,000 problems, which range from having simple oneline solutions to being substantial algorithmic challenges, for more details please refer to this paper: https://arxiv.org/pdf/2105.09938.pdf.\n",
+                "dataset_name": "codeparrot/apps"
+            }
+        },
+        "tags": [
+            "task_categories:text-generation",
+            "task_ids:language-modeling",
+            "multilinguality:monolingual",
+            "language:code"
+        ],
+        "is_gated": false
+    },
+    "sst2": {
+        "dataset_name": "sst2",
+        "description": "The Stanford Sentiment Treebank consists of sentences from movie reviews and\nhuman annotations of their sentiment. The task is to predict the sentiment of a\ngiven sentence. We use the two-way (positive/negative) class split, and use only\nsentence-level labels.",
+        "downloads": 59683,
+        "configs": {
+            "default": {
+                "config_name": "default",
+                "sample_row": "{\"idx\": \"0\", \"sentence\": \"\\\"hide new secretions from the parental units \\\"\", \"label\": \"0\"}",
+                "columns": [
+                    "idx",
+                    "sentence",
+                    "label"
+                ],
+                "columns_mapping": {
+                    "idx": "idx",
+                    "sentence": "sentence",
+                    "label": "label"
+                },
+                "dataset_description": "The Stanford Sentiment Treebank consists of sentences from movie reviews and\nhuman annotations of their sentiment. The task is to predict the sentiment of a\ngiven sentence. We use the two-way (positive/negative) class split, and use only\nsentence-level labels.\n",
+                "dataset_name": "sst2"
+            }
+        },
+        "tags": [
+            "task_categories:text-classification",
+            "task_ids:sentiment-classification",
+            "annotations_creators:crowdsourced",
+            "multilinguality:monolingual",
+            "source_datasets:original",
+            "language:en"
+        ],
+        "is_gated": false
+    },
+    "lmqg/qag_squad": {
+        "dataset_name": "lmqg/qag_squad",
+        "description": "Question & answer generation dataset based on SQuAD.",
+        "downloads": 13,
+        "configs": {
+            "qag_squad": {
+                "config_name": "qag_squad",
+                "sample_row": "{\"answers\": \"[\\\"4 Minutes\\\", \\\"Elvis Presley\\\", \\\"thirteenth\\\", \\\"Stic...\", \"questions\": \"[\\\"Which single was released as the album's lead si...\", \"paragraph\": \"\\\"\\\\\\\"4 Minutes\\\\\\\" was released as the album's lead si...\", \"questions_answers\": \"\\\"question: Which single was released as the album'...\"}",
+                "columns": [
+                    "answers",
+                    "questions",
+                    "paragraph",
+                    "questions_answers"
+                ],
+                "columns_mapping": {
+                    "answers": "answers",
+                    "questions": "questions",
+                    "paragraph": "paragraph",
+                    "questions_answers": "questions_answers"
+                },
+                "dataset_description": "Question & answer generation dataset based on SQuAD.",
+                "dataset_name": "lmqg/qag_squad"
+            }
+        },
+        "tags": [
+            "task_categories:text-generation",
+            "task_ids:language-modeling",
+            "multilinguality:monolingual",
+            "source_datasets:lmqg/qg_squad",
+            "language:en",
+            "question-generation"
+        ],
+        "is_gated": false
+    }
+}
