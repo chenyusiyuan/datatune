@@ -5,6 +5,8 @@ import re
 import subprocess
 from pathlib import Path
 
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 from huggingface_hub import HfApi
 
 
@@ -26,7 +28,7 @@ def main(pretrained_model_name: str, cache_dir: str = None) -> None:
         model_name = pretrained_model_name
 
     subprocess.run(
-        ["git", "clone", f"https://huggingface.co/{pretrained_model_name}"],
+        ["git", "clone", f"https://hf-mirror.com/{pretrained_model_name}"],
         env=dict(os.environ, GIT_LFS_SKIP_SMUDGE="1"),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -58,7 +60,7 @@ def main(pretrained_model_name: str, cache_dir: str = None) -> None:
         readme_content = f.read()
         print(readme_content)
 
-    api = HfApi()
+    api = HfApi(endpoint=os.environ.get("HF_ENDPOINT", "https://hf-mirror.com"))
     model_meta = api.model_info(pretrained_model_name)
     downloads = model_meta.downloads
     print(pretrained_model_name, downloads)

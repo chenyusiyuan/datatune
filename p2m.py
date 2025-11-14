@@ -1,9 +1,13 @@
 """A command line demo to run the system up to data generation,
 then visualize clusters with Ollama embeddings, and exit."""
-# export HF_ENDPOINT="https://hf-mirror.com"
+
+import os
+
+# Ensure Hugging Face traffic goes through mirror before importing HF-dependent libs.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 import json
 import logging
-import os
 import time
 from pathlib import Path
 import shutil
@@ -33,9 +37,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-# ---- 镜像源（可按需保留）----
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 # ========== 小工具 ==========

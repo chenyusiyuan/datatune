@@ -4,6 +4,8 @@ import json
 import os
 from typing import Any
 
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 from huggingface_hub import list_datasets
 
 

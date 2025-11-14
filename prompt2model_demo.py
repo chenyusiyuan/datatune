@@ -1,8 +1,12 @@
 """An commend line demo to run the whole system."""
 
+import os
+
+# Ensure Hugging Face traffic goes through mirror before importing HF-dependent libs.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 import json
 import logging
-import os
 import time
 from pathlib import Path
 

@@ -3,10 +3,13 @@ from __future__ import annotations  # noqa FI58
 import argparse
 import gc
 import json
+import os
 import threading
 import time
 from collections.abc import MutableMapping
 from typing import Any
+
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 import datasets
 import requests
@@ -48,7 +51,7 @@ def get_dataset_validity(dataset_name: str, max_retries: int = 5) -> bool:
     Returns:
         bool: True if dataset is valid and can be previewed and viewed, else False.
     """
-    api_url = f"https://datasets-server.huggingface.co/is-valid?dataset={dataset_name}"
+    api_url = f"https://datasets-server.hf-mirror.com/is-valid?dataset={dataset_name}"
     retries = 0
     backoff = 10
 

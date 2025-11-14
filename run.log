@@ -1,7 +1,3 @@
-Traceback (most recent call last):
-  File "/home/chenyusiyuan/prompt2model/p2m.py", line 11, in <module>
-    import datasets
-ModuleNotFoundError: No module named 'datasets'
                         ____                            _     ____    __  __           _      _                         
                        |  _ \ _ __ ___  _ __ ___  _ __ | |_  |___ \  |  \/  | ___   __| | ___| |                        
                        | |_) | '__/ _ \| '_ ` _ \| '_ \| __|   __) | | |\/| |/ _ \ / _` |/ _ \ |                        
@@ -9,16 +5,14 @@ ModuleNotFoundError: No module named 'datasets'
                        |_|   |_|  \___/|_| |_| |_| .__/ \__| |_____| |_|  |_|\___/ \__,_|\___|_|                        
                                                  |_|                                                                    
                                                                                                                         
-[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251114_175121
+[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251114_213519
 Do you want to start from scratch? (y/n)
 Loaded prompt from file: prompt.yaml
 Retrieving dataset...
 Do you want to perform data transformation? (y/n)
 Data transformation converts retrieved data into the desired format as per the prompt.
 Enter the number of data points you want to transform (the remaining will be discarded):
-2025-11-14 17:51:55,672 - DescriptionDatasetRetriever - INFO - Creating dataset descriptions
-INFO:DescriptionDatasetRetriever:Creating dataset descriptions
-2025-11-14 17:53:00,377 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
+2025-11-14 21:36:15,084 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
 INFO:DescriptionDatasetRetriever:Top datasets retrieved.
 [WARN] remote retrieval init/fetch failed: expected string or bytes-like object
 [fallback] building dataset from prompt examples.
