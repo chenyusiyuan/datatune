@@ -55,6 +55,7 @@ os.environ.setdefault("P2M_OLLAMA_BASE", DEFAULT_OLLAMA_BASE)
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import shutil
 import re
@@ -84,6 +85,28 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+
+# ===== 从输出文本派生可视化标签 =====
+_POLICY_PATTERNS = [
+    ("风险提示", re.compile(r"(不构成投资建议|风险|理财非保本|过往业绩不代表未来)", re.I)),
+    ("安全拒绝", re.compile(r"(验证码|密码|OTP|不会索取|请勿提供|不要提供|切勿|链接)", re.I)),
+    ("线下办理", re.compile(r"(网点|柜台|人工客服|到店|预约|携带.*身份证)", re.I)),
+    ("合规声明", re.compile(r"(以.*(公告|合同|规定|监管).*(为准)|以.*为准)", re.I)),
+    ("清算/时效", re.compile(r"(T\+\d|工作日|自然日|到账|清算|结算)", re.I)),
+    ("兜底话术", re.compile(r"(抱歉，我无法解答|联系人工客服)", re.I)),
+]
+
+
+def _derive_viz_tag(text: str) -> str:
+    """Derive visualization tag from output text."""
+    t = (text or "").strip()
+    if not t:
+        return "空输出"
+    for name, pat in _POLICY_PATTERNS:
+        if pat.search(t):
+            return name
+    return "一般答复"
 
 
 # ========== 小工具 ==========
@@ -322,6 +345,48 @@ def _embed_with_ollama(texts, model="nomic-embed-text", host="http://localhost:1
     return np.asarray(embs, dtype=np.float32)
 
 
+def _get_ollama_hosts():
+    """Return a list of Ollama hosts (support multi-instance)."""
+    bases = os.getenv("P2M_OLLAMA_BASES", "").strip()
+    if bases:
+        return [b.strip() for b in bases.split(",") if b.strip()]
+    return [os.getenv("P2M_OLLAMA_BASE", DEFAULT_OLLAMA_BASE)]
+
+
+def _embed_with_ollama_multi(texts, model=None, hosts=None, timeout=60, workers=0):
+    """
+    Embedding with Ollama, supporting multi-host round-robin and optional parallelism.
+    """
+    import requests
+
+    model = model or os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    hosts = hosts or _get_ollama_hosts()
+    assert hosts, "No Ollama host provided."
+
+    def _one(idx_text):
+        idx, txt = idx_text
+        host = hosts[idx % len(hosts)]
+        url = f"{host}/api/embeddings"
+        r = requests.post(url, json={"model": model, "prompt": str(txt)}, timeout=timeout)
+        r.raise_for_status()
+        return idx, r.json()["embedding"]
+
+    if workers and workers > 0:
+        embs = [None] * len(texts)
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = [ex.submit(_one, (i, t)) for i, t in enumerate(texts)]
+            for fut in as_completed(futs):
+                i, e = fut.result()
+                embs[i] = e
+        return np.asarray(embs, dtype=np.float32)
+    else:
+        out = []
+        for i, t in enumerate(texts):
+            _, e = _one((i, t))
+            out.append(e)
+        return np.asarray(out, dtype=np.float32)
+
+
 def _reduce_and_plot(emb, df, color_col="label", method="umap", out_path="synth_clusters.png"):
     # 优先 UMAP，失败则 t-SNE
     try:
@@ -374,6 +439,136 @@ def _reduce_and_plot(emb, df, color_col="label", method="umap", out_path="synth_
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     line_print(f"[OK] cluster figure saved to: {out_path}")
+
+
+def _reduce_and_plot_v2(emb, df, color_field="viz_tag", method="umap", out_path="synth_clusters.png"):
+    """
+    Unified dimensionality reduction + plotting.
+    Color points by `color_field` (default 'viz_tag'), independent of labels.
+    """
+    # Prefer UMAP, fallback to t-SNE
+    try:
+        import umap
+
+        reducer = (
+            umap.UMAP(n_neighbors=15, min_dist=0.1, metric="cosine", random_state=42)
+            if method.lower() == "umap"
+            else None
+        )
+    except Exception:
+        reducer = None
+
+    if reducer is None and method.lower() != "tsne":
+        method = "tsne"
+    if method.lower() == "tsne":
+        from sklearn.manifold import TSNE
+
+        xy = TSNE(
+            n_components=2,
+            perplexity=30,
+            learning_rate="auto",
+            init="pca",
+            random_state=42,
+        ).fit_transform(emb)
+    else:
+        xy = reducer.fit_transform(emb)
+
+    # Font for Chinese; allow minus sign
+    plt.rcParams["font.sans-serif"] = [
+        "Noto Sans CJK SC",
+        "SimHei",
+        "WenQuanYi Zen Hei",
+        "Arial Unicode MS",
+    ]
+    plt.rcParams["axes.unicode_minus"] = False
+
+    # Color field (default 'viz_tag')
+    if color_field not in df.columns:
+        color_field = "viz_tag"
+    colors = df[color_field].astype(str).fillna("NA").values
+    uniq = list(dict.fromkeys(colors))  # ordered unique
+
+    # If too many categories, fold tail into OTHER
+    MAX_CATS = 12
+    if len(uniq) > MAX_CATS:
+        keep = set(uniq[: MAX_CATS - 1])
+        colors = np.array([c if c in keep else "OTHER" for c in colors])
+        uniq = list(keep) + ["OTHER"]
+
+    cmap = plt.cm.get_cmap("tab20", len(uniq))
+
+    plt.figure(figsize=(9, 7))
+    for i, cat in enumerate(uniq):
+        idx = colors == cat
+        if not np.any(idx):
+            continue
+        plt.scatter(
+            xy[idx, 0],
+            xy[idx, 1],
+            s=12,
+            alpha=0.85,
+            color=cmap(i),
+            label=f"{cat} ({idx.sum()})",
+        )
+
+    plt.legend(fontsize=8, loc="best", ncol=1)
+    plt.title(f"Clusters colored by '{color_field}' ({method.upper()})")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200)
+    line_print(f"[OK] cluster figure saved to: {out_path}")
+    return xy
+
+
+def visualize_generated_dataset_v2(gen_root: Path, run_dir: Path):
+    """
+    Visualize generated dataset only.
+    - Load HF dataset from `gen_root`
+    - Normalize to input/output/source
+    - Derive viz_tag from output
+    - Embed, reduce (UMAP -> t-SNE fallback), and plot
+    - Save embeddings.npy, viz_meta.csv, viz_counts.json
+    """
+    if gen_root is None or not Path(gen_root).exists():
+        line_print("[WARN] generated dataset root not found; skip viz.")
+        return
+
+    ds = load_from_disk(str(gen_root))
+    ds = _normalize_io_columns(ds)
+    df = ds.to_pandas().copy()
+    if "source" not in df.columns:
+        df["source"] = "unknown"
+
+    df["input"] = df["input"].astype(str)
+    df["output"] = df["output"].astype(str)
+    df["__text__"] = df["input"] + " || " + df["output"]
+    df["viz_tag"] = df["output"].map(_derive_viz_tag)
+    df["out_len"] = df["output"].map(len)
+
+    texts = df["__text__"].tolist()
+    if len(texts) == 0:
+        line_print("[WARN] generated dataset is empty; skip viz.")
+        return
+
+    embed_model = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    workers = int(os.getenv("P2M_EMBED_WORKERS", "0") or "0")
+    emb = _embed_with_ollama_multi(texts, model=embed_model, hosts=_get_ollama_hosts(), workers=workers)
+
+    dr_method = os.getenv("P2M_DR_METHOD", "umap")
+    color_field = os.getenv("P2M_COLOR_FIELD", "viz_tag")
+    out_path = run_dir / os.getenv("P2M_OUT", "synth_clusters.png")
+    xy = _reduce_and_plot_v2(emb, df, color_field=color_field, method=dr_method, out_path=str(out_path))
+
+    # Persist side artifacts
+    np.save(run_dir / "embeddings.npy", emb)
+    meta = df[["input", "output", "source", "viz_tag", "out_len"]].copy()
+    meta["x"] = xy[:, 0]
+    meta["y"] = xy[:, 1]
+    meta.to_csv(run_dir / "viz_meta.csv", index=False, encoding="utf-8")
+
+    counts = meta["viz_tag"].value_counts().to_dict()
+    with (run_dir / "viz_counts.json").open("w", encoding="utf-8") as f:
+        json.dump(counts, f, ensure_ascii=False, indent=2)
+    line_print(f"[OK] exported: {run_dir/'viz_meta.csv'}, {run_dir/'viz_counts.json'}")
 
 
 def _normalize_io_columns(ds):
@@ -762,47 +957,23 @@ def main():
 
         line_print("Data step finished. Now visualizing clusters...")
 
-        # ===== 4) 聚类可视化（合成 + 检索合并）=====
-        gen_df = _flatten_generated_to_df(status.get("generated_dataset_root"))
-        ret_df = _flatten_retrieved_to_df(status.get("retrieved_dataset_dict_root"))
-        mix_df = pd.concat([ret_df, gen_df], ignore_index=True)
-        if len(mix_df) == 0:
-            line_print("No data to visualize (both retrieved and generated are empty). Exit.")
+        # ===== 4) 合成数据的聚类可视化（基于输出派生标签；不再使用 label）=====
+        gen_root_from_status = status.get("generated_dataset_root")
+        if not gen_root_from_status:
+            line_print("[WARN] generated_dataset_root missing in status; skip viz.")
             return
-
-        ollama_model = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
-        mix_emb = _embed_with_ollama(mix_df["__text__"].values, model=ollama_model)
-
-        # 保存嵌入与元数据
-        np.save(run_dir / "embeddings.npy", mix_emb)
-        mix_df.to_csv(run_dir / "mix_meta.csv", index=False, encoding="utf-8")
-
-        # 降维绘图（落盘到本次 run 目录）
-        dr_method = os.getenv("P2M_DR_METHOD", "umap")
-        out_path  = run_dir / os.getenv("P2M_OUT", "synth_clusters.png")
-        color_col = "label"
-        _reduce_and_plot(mix_emb, mix_df, color_col=color_col, method=dr_method, out_path=str(out_path))
+        visualize_generated_dataset_v2(Path(gen_root_from_status), run_dir)
         line_print(f"[DONE] everything saved under: {run_dir.resolve()}")
         return
 
     # ===== 已生成过数据：直接可视化一次并退出 =====
     run_dir_from_status = Path(status.get("run_dir", run_dir))
-    gen_df = _flatten_generated_to_df(status.get("generated_dataset_root"))
-    ret_df = _flatten_retrieved_to_df(status.get("retrieved_dataset_dict_root"))
-    mix_df = pd.concat([ret_df, gen_df], ignore_index=True)
-    if len(mix_df) == 0:
-        line_print("No data to visualize (both retrieved and generated are empty). Exit.")
+    gen_root_from_status = status.get("generated_dataset_root")
+    if not gen_root_from_status:
+        line_print("[WARN] generated_dataset_root missing in status; skip viz.")
         return
-
-    ollama_model = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
-    mix_emb = _embed_with_ollama(mix_df["__text__"].values, model=ollama_model)
-    np.save(run_dir_from_status / "embeddings.npy", mix_emb)
-    mix_df.to_csv(run_dir_from_status / "mix_meta.csv", index=False, encoding="utf-8")
-    dr_method = os.getenv("P2M_DR_METHOD", "umap")
-    out_path  = run_dir_from_status / os.getenv("P2M_OUT", "synth_clusters.png")
-    color_col = os.getenv("P2M_COLOR_COL", "label")
-    _reduce_and_plot(mix_emb, mix_df, color_col=color_col, method=dr_method, out_path=str(out_path))
-    line_print(f"[DONE] figure saved to: {out_path.resolve()}")
+    visualize_generated_dataset_v2(Path(gen_root_from_status), run_dir_from_status)
+    line_print(f"[DONE] figure saved to: {(run_dir_from_status / os.getenv('P2M_OUT', 'synth_clusters.png')).resolve()}")
     return
 
 
