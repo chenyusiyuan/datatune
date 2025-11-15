@@ -5,45 +5,5 @@
                        |_|   |_|  \___/|_| |_| |_| .__/ \__| |_____| |_|  |_|\___/ \__,_|\___|_|                        
                                                  |_|                                                                    
                                                                                                                         
-[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251115_134312
+[RUN] output dir: /data/chenyusiyuan/prompt2model/runs/run_20251115_150223
 Do you want to start from scratch? (y/n)
-Loaded prompt from file: prompt.yaml
-Retrieving dataset...
-Do you want to perform data transformation? (y/n)
-Data transformation converts retrieved data into the desired format as per the prompt.
-Enter the number of data points you want to transform (the remaining will be discarded):
-2025-11-15 13:43:29,336 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
-INFO:DescriptionDatasetRetriever:Top datasets retrieved.
-2025-11-15 13:44:01,074 - DescriptionDatasetRetriever - INFO - Chosen dataset and config: dataset_name='clinc_oos' config_name='plus'
-INFO:DescriptionDatasetRetriever:Chosen dataset and config: dataset_name='clinc_oos' config_name='plus'
-2025-11-15 13:44:05,470 - DescriptionDatasetRetriever - INFO - Column selection completed. Selected columns: ['text', 'text']
-INFO:DescriptionDatasetRetriever:Column selection completed. Selected columns: ['text', 'text']
-2025-11-15 13:44:18,438 - DescriptionDatasetRetriever - INFO - Dataset loaded
-INFO:DescriptionDatasetRetriever:Dataset loaded
-2025-11-15 13:44:18,443 - DescriptionDatasetRetriever - INFO - Unnecessary columns removed
-INFO:DescriptionDatasetRetriever:Unnecessary columns removed
-  0%|          | 0/100 [00:00<?, ?it/s]  1%|          | 1/100 [00:11<18:27, 11.19s/it]  2%|▏         | 2/100 [00:15<11:38,  7.13s/it]  3%|▎         | 3/100 [00:18<08:36,  5.33s/it]  4%|▍         | 4/100 [00:19<05:46,  3.61s/it]  5%|▌         | 5/100 [00:28<08:46,  5.54s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-  7%|▋         | 7/100 [00:55<14:51,  9.58s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-  9%|▉         | 9/100 [01:23<17:26, 11.50s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
-WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
