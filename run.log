@@ -1,9 +1,5 @@
-                        ____                            _     ____    __  __           _      _                         
-                       |  _ \ _ __ ___  _ __ ___  _ __ | |_  |___ \  |  \/  | ___   __| | ___| |                        
-                       | |_) | '__/ _ \| '_ ` _ \| '_ \| __|   __) | | |\/| |/ _ \ / _` |/ _ \ |                        
-                       |  __/| | | (_) | | | | | | |_) | |_   / __/  | |  | | (_) | (_| |  __/ |                        
-                       |_|   |_|  \___/|_| |_| |_| .__/ \__| |_____| |_|  |_|\___/ \__,_|\___|_|                        
-                                                 |_|                                                                    
-                                                                                                                        
-[RUN] output dir: /data/chenyusiyuan/prompt2model/runs/run_20251115_150223
-Do you want to start from scratch? (y/n)
+/home/chenyusiyuan/data/miniconda3/envs/p2m/lib/python3.9/site-packages/datasets/load.py:1486: FutureWarning: The repository for Hello-SimpleAI/HC3-Chinese contains custom code which must be executed to correctly load the dataset. You can inspect the repository content at https://hf.co/datasets/Hello-SimpleAI/HC3-Chinese
+You can avoid this message in future by passing the argument `trust_remote_code=True`.
+Passing `trust_remote_code=True` will be mandatory to load this dataset from the next major release of `datasets`.
+  warnings.warn(
+Transforming dataset:   0%|          | 0/689 [00:00<?, ?it/s]Transforming dataset:   0%|          | 1/689 [00:09<1:49:06,  9.51s/it]Transforming dataset:   0%|          | 2/689 [00:19<1:54:25,  9.99s/it]Transforming dataset:   0%|          | 3/689 [00:29<1:54:47, 10.04s/it]Transforming dataset:   1%|          | 4/689 [00:37<1:43:16,  9.05s/it]Transforming dataset:   1%|          | 5/689 [00:45<1:39:19,  8.71s/it]Transforming dataset:   1%|          | 6/689 [00:51<1:26:58,  7.64s/it]Transforming dataset:   1%|          | 7/689 [00:56<1:19:36,  7.00s/it]Transforming dataset:   1%|          | 8/689 [01:02<1:15:58,  6.69s/it]

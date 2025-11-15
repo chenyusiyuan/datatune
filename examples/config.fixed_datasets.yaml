@@ -1,0 +1,34 @@
+datasets:
+  - dataset_name: Hello-SimpleAI/HC3-Chinese
+    config_name: finance
+    split: train
+    input_col: question
+    output_col: null
+    filters:
+      regex_any:
+        - "银行|信用卡|理财|基金|外汇|还款|转账|限额|费率|年费|账单|结汇|网点|柜台|ATM"
+    postprocess:
+      steps:
+        - pick_first_nonempty: ["human_answers", "chatgpt_answers"]
+        - rewrite_by_rules: finance_qa_v1
+
+  - dataset_name: banking77
+    config_name: default
+    split: train
+    input_col: text
+    output_col: null
+    filters: {}
+    postprocess:
+      steps:
+        - generate_by_rules: finance_qa_v1
+
+  - dataset_name: AmazonScience/massive
+    config_name: zh-CN
+    split: train
+    input_col: utt
+    output_col: null
+    filters:
+      intent_in: ["transfer_money", "check_balance", "credit_card", "exchange_rate", "open_account"]
+    postprocess:
+      steps:
+        - generate_by_rules: finance_qa_v1

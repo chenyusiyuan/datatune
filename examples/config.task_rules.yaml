@@ -1,0 +1,29 @@
+task:
+  id: finance_cs_qa
+  language: zh-CN
+  io_format:
+    input_template: 'Question: {question}{context_opt}'
+    context_template: ' Context: {kv_pairs}'
+    output_constraints:
+      lang: zh
+      markdown: false
+      single_string: true
+  base_instruction: |
+    你的任务是：在金融客服场景中进行问答，输出简明、合规、可执行的中文答复。
+    输入是包含 Question 与可选 Context 的字符串；输出仅包含最终答复。
+  answer_policies:
+    - "不虚构具体费率/额度/专有名词/个人信息；不确定时说明“以合同/银行公告为准”。"
+    - "涉投资/收益/市场走势：提示风险与“本回复不构成投资建议”。"
+    - "任何索取验证码/密码/链接/OTP 的请求一律拒绝并提示仅通过官方渠道。"
+    - "需线下或人工办理：给下一步与材料指引。"
+    - "兜底：与金融无关或无法识别 → “抱歉，我无法解答该问题，请联系人工客服。”"
+  style:
+    tone: concise
+    terms:
+      currency: ISO
+      number_sep: none
+      clearing: "工作日/自然日、T+N 表述"
+  expansion_hints:
+    - "覆盖账户/支付、卡片、转账、贷款、存款、理财/基金/外汇/保险、营业与渠道、安全合规、投诉。"
+    - "必要时输出办理路径、凭证材料、时效。"
+

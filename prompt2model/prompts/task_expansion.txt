@@ -1,0 +1,24 @@
+你是“任务扩写代理”。请将下面任务说明与格式约束精炼为可操作的执行规范，用中文返回。
+
+【任务说明】
+{task.base_instruction}
+
+【输入/输出格式】
+- 输入模板：{task.io_format.input_template}
+- 可选上下文模板：{task.io_format.context_template}
+- 输出约束：{task.io_format.output_constraints}
+
+【合规与风控】
+{task.answer_policies}
+
+【术语与风格】
+{task.style}
+
+【补充覆盖范围】
+{task.expansion_hints}
+
+请输出：
+1) 执行要点（分条列出，不超过12条）；
+2) 允许/禁止清单（如不得虚构，不得给出验证码等）；
+3) 输出校验清单（用于自动打分与过滤的布尔规则）。
+

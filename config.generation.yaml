@@ -1,0 +1,55 @@
+llm_backend:
+  backend: ollama                 # 建议显式写出，便于多后端切换
+  base_url: http://localhost:11434
+  gen_model: qwen2.5:14b-instruct
+  judge_model: qwen2.5:14b-instruct
+  # 采样与速率（与你代码中的默认值一致或更稳）
+  temperature:
+    init: 0.4
+    max: 1.0
+  top_p: 0.9
+  presence_penalty: 0.6
+  frequency_penalty: 0.6
+  responses_per_request: 1
+  max_batch_size: 3
+  requests_per_minute: 80
+
+self_consistency:
+  k: 5
+  vote: majority_llm_judge   # 或 rule_score 作兜底
+  max_retries: 1
+
+filters:
+  lang: zh
+  zh_min_ratio: 0.8           # 新增：按汉字占比拦截“英文或混杂”输出
+  output_len:
+    min: 16                   # 从 12 调到 16，降低极短答复
+    max: 256                  # 从 240 放宽到 256，容纳“办理路径/材料/时效”
+  ngram_novelty:
+    n: 4
+    rougeL_threshold: 0.85    # 从 0.90 降到 0.85，降低误杀
+  sensitive_keywords:
+    # 不屏蔽“验证码/密码/链接”等安全词，因它们常出现在反诈提示里
+    - "违法交易"
+    - "赌博"
+    - "黄赌毒"
+    - "赌球"
+    - "诈骗教程"
+
+formatting:
+  enforce_json_strict: true    # 评审时严格解析 {"input","output"} 候选
+  strip_markdown: true         # 生成后去 Markdown 痕迹
+  normalize_zh_punct: true     # 中文标点规整
+
+limits:
+  # 检索数量：对每个白名单数据集，在过滤之后最多保留多少条样本参与转换。
+  # -1 表示不设上限；0 表示跳过该数据集（不做转换）。
+  max_retrieved_per_dataset: -1
+  # 合成数据数量：在“检索+转换”之后，额外用指令模型纯合成多少条样本。
+  # 0 表示不做纯合成；N>0 表示合成 N 条。
+  synthetic_num_examples: 1000
+
+logging:
+  save_plan: true
+  save_candidates: true
+  save_failures: true

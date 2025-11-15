@@ -13,14 +13,51 @@ DEFAULT_EMBED_MODEL = "bge-m3:latest"
 
 DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 
+#多卡
+
+#   cli运行命令
+#export P2M_OLLAMA_BASES=http://localhost:11434,http://localhost:11435
+#   python -m prompt2model.cli.p2m 2>&1 | tee -a run.log
+
+
+    # # GPU0
+    # CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=:11434 ollama serve
+
+    # # GPU1
+    # CUDA_VISIBLE_DEVICES=1 OLLAMA_HOST=:11435 ollama serve
+# ===== 环境变量总览（供 CLI / 脚本共用）=====
+# - HF_ENDPOINT
+#     HuggingFace 镜像源，默认使用 https://hf-mirror.com。
+# - P2M_BACKEND
+#     推理后端：默认 "ollama"；设置为其他值时可走 OpenAI/litellm。
+# - P2M_GEN_MODEL
+#     指令生成 / 转换所用的 LLM 名称（例如 qwen2.5:14b-instruct）。
+# - P2M_OLLAMA_BASE
+#     单一 Ollama 实例地址，默认 "http://localhost:11434"。
+# - P2M_OLLAMA_BASES
+#     多个 Ollama 实例地址，用逗号分隔：
+#         "http://localhost:11434,http://localhost:11435"
+#     若设置，则 TransformExecutor 会在同一 run 内轮询多张卡并行自一致性生成。
+# - P2M_OLLAMA_EMBED_MODEL
+#     可视化用的嵌入模型名称（例如 "nomic-embed-text" 或 "bge-m3:latest"）。
+# - P2M_FIXED_CONFIG / P2M_TASK_RULES / P2M_GEN_CONFIG
+#     新 CLI (`python -m prompt2model.cli.p2m`) 使用的 YAML 路径：
+#       * P2M_FIXED_CONFIG ：白名单数据集 config.fixed_datasets.yaml
+#       * P2M_TASK_RULES   ：任务规则 config.task_rules.yaml
+#       * P2M_GEN_CONFIG   ：生成 & 自一致性 config.generation.yaml
+#     若未设置，CLI 会退回默认的根目录配置文件（见 prompt2model/cli/p2m.py）。
+
 # Ensure Hugging Face traffic goes through mirror before importing HF-dependent libs.
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+# 默认 Ollama HTTP 端点（若外部未指定）
+os.environ.setdefault("P2M_OLLAMA_BASE", DEFAULT_OLLAMA_BASE)
 
 import json
 import logging
 import time
 from pathlib import Path
 import shutil
+import re
 
 import datasets
 import pyfiglet
@@ -181,6 +218,96 @@ def _flatten_retrieved_to_df(root: str) -> pd.DataFrame:
     df["input"]  = df.get("input", "").astype(str)
     df["__text__"] = df["input"] + " || " + df["output"]
     return df[["input","output","label","source","__text__"]]
+
+
+def _extract_prompt_text(s: str) -> str:
+    """
+    从 .md/.txt 内容中抽取可解析的 prompt 文本：
+    1) 若存在 Markdown 代码块，优先取首个代码块内容；
+    2) 去除首尾的三引号（三个双引号或三个单引号），返回清洗后的纯文本。
+    """
+    s = s.replace("\r\n", "\n")
+    # 优先匹配代码块 ```...```
+    m = re.search(r"```(?:text|md|markdown|prompt)?\s*(.*?)```", s, flags=re.S | re.I)
+    inner = m.group(1) if m else s
+    inner = inner.strip()
+    # 去掉首尾三引号
+    if (inner.startswith('"""') and inner.endswith('"""')) or (inner.startswith("'''") and inner.endswith("'''")):
+        inner = inner[3:-3].strip()
+    return inner
+
+
+def _parse_prompt_from_text(prompt_text: str):
+    """
+    用 Prompt2Model 的解析器把整段 prompt 文本拆成 instruction 与 examples。
+    """
+    parser = PromptBasedInstructionParser(task_type=TaskType.TEXT_GENERATION)
+    parser.parse_from_prompt(prompt_text)
+    return parser.instruction, parser.examples
+
+
+def _load_prompt_from_candidates(run_dir: Path):
+    """
+    依次尝试从候选文件加载 prompt：
+    - YAML/YML/JSON: 优先读 instruction/examples；若只有 prompt: 则作为文本再解析；
+    - MD/TXT: 读取文本 -> 抽取代码块 -> 去三引号 -> 解析。
+    成功时返回 (instruction, examples, used_file, cleaned_text_or_None)。
+    失败返回 None。
+    """
+    env_prompt = os.getenv("P2M_PROMPT_FILE")
+    candidates = [env_prompt] if env_prompt else []
+    candidates += ["prompt.md", "prompt.txt", "prompt.yaml", "prompt.yml", "prompt.json"]
+
+    for p in candidates:
+        if not p:
+            continue
+        path = Path(p)
+        if not path.exists():
+            continue
+        ext = path.suffix.lower()
+
+        try:
+            if ext in (".yml", ".yaml", ".json"):
+                with path.open("r", encoding="utf-8") as f:
+                    meta = yaml.safe_load(f) if ext in (".yml", ".yaml") else json.load(f)
+                if isinstance(meta, dict) and ("instruction" in meta or "examples" in meta):
+                    instruction = meta.get("instruction", "")
+                    examples = meta.get("examples", [])
+                    # 归档原文件
+                    try:
+                        shutil.copy2(path, run_dir / path.name)
+                    except Exception:
+                        pass
+                    return instruction, examples, str(path), None
+                elif isinstance(meta, dict) and isinstance(meta.get("prompt"), str):
+                    prompt_text = _extract_prompt_text(meta["prompt"])
+                    instruction, examples = _parse_prompt_from_text(prompt_text)
+                    # 归档
+                    try:
+                        shutil.copy2(path, run_dir / path.name)
+                    except Exception:
+                        pass
+                    with (run_dir / "prompt.cleaned.txt").open("w", encoding="utf-8") as f:
+                        f.write(prompt_text)
+                    return instruction, examples, str(path), prompt_text
+                else:
+                    raise ValueError(f"缺少 instruction/examples 或 prompt 字段: {path}")
+            else:
+                raw_text = path.read_text(encoding="utf-8")
+                prompt_text = _extract_prompt_text(raw_text)
+                instruction, examples = _parse_prompt_from_text(prompt_text)
+                # 归档
+                try:
+                    shutil.copy2(path, run_dir / path.name)
+                except Exception:
+                    pass
+                with (run_dir / "prompt.cleaned.txt").open("w", encoding="utf-8") as f:
+                    f.write(prompt_text)
+                return instruction, examples, str(path), prompt_text
+        except Exception as e:
+            line_print(f"[WARN] Failed to parse '{path}': {e}")
+
+    return None
 
 
 def _embed_with_ollama(texts, model="nomic-embed-text", host="http://localhost:11434"):
@@ -377,32 +504,25 @@ def main():
 
     # ===== 1) 解析任务说明 =====
     if not propmt_has_been_parsed:
-        prompt_file = "prompt.yaml"
         loaded_from_file = False
 
-        if prompt_file and Path(prompt_file).exists():
-            with open(prompt_file, "r", encoding="utf-8") as f:
-                meta = yaml.safe_load(f) if prompt_file.endswith((".yml", ".yaml")) else json.load(f)
-            if "instruction" not in meta:
-                raise ValueError(f"[prompt] 文件缺少 'instruction' 字段: {prompt_file}")
-            instruction = meta["instruction"]
-            examples = meta.get("examples", [])
+        # 优先从文件加载（支持 .md/.txt/.yaml/.yml/.json）
+        loaded = _load_prompt_from_candidates(run_dir)
+        if loaded is not None:
+            instruction, examples, used_file, cleaned_text = loaded
             status["instruction"] = instruction
             status["examples"] = examples
             status["prompt_has_been_parsed"] = True
             with open("status.yaml", "w") as f:
-                yaml.safe_dump(status, f)
+                yaml.safe_dump(status, f, allow_unicode=True)
             propmt_has_been_parsed = True
             loaded_from_file = True
-            line_print(f"Loaded prompt from file: {prompt_file}")
-            # 归档 prompt 到 run_dir
-            try:
-                shutil.copy2(prompt_file, run_dir / "prompt.yaml")
-            except Exception:
-                pass
+            line_print(f"[OK] Loaded prompt from file: {used_file}")
+        else:
+            line_print("[INFO] No prompt file found or parse failed. Fallback to interactive input.")
 
+        # 交互式输入（仅当文件加载失败时）
         if not loaded_from_file:
-            # 交互式输入
             prompt = ""
             line_print("Enter your task description and few-shot examples (or 'done' to finish):")
             time.sleep(0.5)
@@ -413,17 +533,23 @@ def main():
                 prompt += line + "\n"
 
             line_print("Parsing prompt...")
-            parser = PromptBasedInstructionParser(task_type=TaskType.TEXT_GENERATION)
-            parser.parse_from_prompt(prompt)
+            prompt_text = _extract_prompt_text(prompt)
+            try:
+                instruction, examples = _parse_prompt_from_text(prompt_text)
+            except Exception as e:
+                raise ValueError(f"[prompt] parse failed: {e}")
+
             propmt_has_been_parsed = True
-            status["instruction"] = parser.instruction
-            status["examples"] = parser.examples
+            status["instruction"] = instruction
+            status["examples"] = examples
             status["prompt_has_been_parsed"] = True
             with open("status.yaml", "w") as f:
-                yaml.safe_dump(status, f)
+                yaml.safe_dump(status, f, allow_unicode=True)
             # 归档到 run_dir
             with open(run_dir / "prompt.from_cli.txt", "w", encoding="utf-8") as f:
                 f.write(prompt)
+            with open(run_dir / "prompt.cleaned.txt", "w", encoding="utf-8") as f:
+                f.write(prompt_text)
 
     # ===== 2) 检索数据（失败则回退到 few-shot）=====
     if propmt_has_been_parsed and not dataset_has_been_retrieved:
@@ -503,10 +629,10 @@ def main():
         dataset_has_been_retrieved = True
         status["dataset_has_been_retrieved"] = True
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         # 归档一份 status 到 run_dir
         with open(run_dir / "status.snapshot.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
 
     # ===== 3) 合成数据（本地模型），并安全落盘 =====
     if propmt_has_been_parsed and dataset_has_been_retrieved and not dataset_has_been_generated:
@@ -612,9 +738,9 @@ def main():
         status["generated_dataset_root"] = str(gen_root)
         status["run_dir"] = str(run_dir)
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         with open(run_dir / "status.snapshot.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         # 记录一次 manifest，方便复现实验
         manifest = {
             "run_dir": str(run_dir.resolve()),

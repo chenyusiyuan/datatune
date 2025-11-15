@@ -108,11 +108,42 @@ def find_and_parse_json(
         logger.warning("No valid JSON found in the response.")
         return None
 
+    def _strip_json_line_comments(text: str) -> str:
+        """Remove // line comments that are outside string literals."""
+        lines = text.splitlines()
+        out_lines: list[str] = []
+        for line in lines:
+            in_str = False
+            escaped = False
+            new_chars: list[str] = []
+            i = 0
+            while i < len(line):
+                ch = line[i]
+                if ch == '"' and not escaped:
+                    in_str = not in_str
+                    new_chars.append(ch)
+                elif not in_str and ch == "/" and i + 1 < len(line) and line[i + 1] == "/":
+                    # Start of // comment outside quotes -> drop rest of line
+                    break
+                else:
+                    new_chars.append(ch)
+                escaped = (ch == "\\" and not escaped)
+                i += 1
+            out_lines.append("".join(new_chars))
+        return "\n".join(out_lines)
+
     try:
         response_json = json.loads(correct_json, strict=False)
     except json.decoder.JSONDecodeError:
-        logger.warning(f"API response was not a valid JSON: {correct_json}")
-        return None
+        # 宽松清洗：去掉独立的省略号行、行内注释和多余尾逗号
+        cleaned = re.sub(r"^\s*\.\.\.\s*$", "", correct_json, flags=re.MULTILINE)
+        cleaned = _strip_json_line_comments(cleaned)
+        cleaned = re.sub(r",(\s*[\]}])", r"\1", cleaned)
+        try:
+            response_json = json.loads(cleaned, strict=False)
+        except json.decoder.JSONDecodeError:
+            logger.warning(f"API response was not a valid JSON: {correct_json}")
+            return None
 
     missing_keys = [key for key in required_keys if key not in response_json]
     if len(missing_keys) != 0:

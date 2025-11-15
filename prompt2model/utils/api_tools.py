@@ -135,6 +135,7 @@ class APIAgent:
         model_name: Optional[str] = None,
         max_tokens: Optional[int] = 4000,
         api_base: Optional[str] = None,
+        ollama_base: Optional[str] = None,
     ):
         self.model_name = model_name or os.getenv("P2M_GEN_MODEL", "llama3.1:8b")
         self.max_tokens = max_tokens
@@ -154,7 +155,8 @@ class APIAgent:
             self.backend = "ollama"
 
         # Ollama settings
-        self.ollama_base = os.getenv("P2M_OLLAMA_BASE", "http://localhost:11434").rstrip("/")
+        base = ollama_base or os.getenv("P2M_OLLAMA_BASE", "http://localhost:11434")
+        self.ollama_base = base.rstrip("/")
         self.ollama_num_predict = int(os.getenv("P2M_OLLAMA_NUM_PREDICT", "512"))
 
         # Infer max_tokens via litellm if available (nice-to-have)
@@ -204,6 +206,7 @@ class APIAgent:
         responses_per_request: int,
         requests_per_minute: int,
         token_buffer: int,
+        show_progress: bool = True,
     ) -> List[Dict[str, Any]]:
         assert acompletion is not None, "litellm not installed"
         limiter = aiolimiter.AsyncLimiter(requests_per_minute)
@@ -235,7 +238,10 @@ class APIAgent:
                 return _wrap_text_as_openai_like("")
 
         tasks = [call_one(p) for p in prompts]
-        return await tqdm_asyncio.gather(*tasks)
+        if show_progress:
+            return await tqdm_asyncio.gather(*tasks)
+        # plain asyncio.gather 防止在外层循环中刷满控制台
+        return await asyncio.gather(*tasks)
 
     # ----------- Ollama path -----------
     def _completion_ollama(
@@ -280,6 +286,7 @@ class APIAgent:
         temperature: float,
         responses_per_request: int,
         requests_per_minute: int,
+        show_progress: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         For Ollama we call /api/generate once per prompt.
@@ -315,7 +322,9 @@ class APIAgent:
 
         async with ClientSession() as session:
             tasks = [call_one(session, p) for p in prompts]
-            return await tqdm_asyncio.gather(*tasks)
+            if show_progress:
+                return await tqdm_asyncio.gather(*tasks)
+            return await asyncio.gather(*tasks)
 
     # ----------- Public methods (uniform) -----------
     def generate_one_completion(
@@ -348,17 +357,27 @@ class APIAgent:
         responses_per_request: int = 5,
         requests_per_minute: int = 80,
         token_buffer: int = 300,
+        show_progress: bool = True,
         **_: dict,
     ) -> List[Dict[str, Any]]:
         """Async batch completion; returns list of OpenAI-like dicts."""
         if self.backend == "litellm":
             return await self._acompletion_litellm_batch(
-                prompts, temperature, responses_per_request, requests_per_minute, token_buffer
+                prompts,
+                temperature,
+                responses_per_request,
+                requests_per_minute,
+                token_buffer,
+                show_progress=show_progress,
             )
         else:
             # For Ollama we ignore responses_per_request>1, because /api/generate returns one response.
             return await self._acompletion_ollama_batch(
-                prompts, temperature, responses_per_request, requests_per_minute
+                prompts,
+                temperature,
+                responses_per_request,
+                requests_per_minute,
+                show_progress=show_progress,
             )
 
 # Default agent used across the project

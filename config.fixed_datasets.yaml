@@ -1,0 +1,45 @@
+datasets:
+  - dataset_name: Hello-SimpleAI/HC3-Chinese
+    config_name: finance
+    split: train
+    input_col: question
+    output_col: null
+    filters:
+      # 用中文金融关键词做文本正则过滤（作用于 input_col 与答案文本拼接后）
+      # regex_any:
+      #   - "银行|信用卡|借记卡|理财|基金|外汇|结汇|利率|还款|分期|转账|限额|手续费|年费|账单|网点|柜台|ATM|挂失|预留手机号|支付密码|余额"
+    postprocess:
+      steps:
+        # 先选出一个“人类或ChatGPT”的首个非空答案
+        - pick_first_nonempty: ["human_answers", "chatgpt_answers"]
+        # 统一口径重写为“客服式中文答复”（套用 task_rules 的政策/风格/兜底）
+        - rewrite_by_rules: finance_qa_v1
+
+  - dataset_name: banking77
+    config_name: default
+    split: train
+    input_col: text
+    output_col: null
+    filters:
+      # 该数据全是银行场景，通常不再细分；如需更窄，可加英文关键词正则
+      # regex_any: ["transfer|balance|card|pin|limit|fee|statement|atm|chargeback|interest|loan"]
+      {}
+    postprocess:
+      steps:
+        # 从英文用户问句生成“中文客服答复”；答复语言与格式完全由 finance_qa_v1 约束
+        - generate_by_rules: finance_qa_v1
+
+  - dataset_name: AmazonScience/massive
+    config_name: zh-CN
+    split: train
+    input_col: utt
+    output_col: null
+    filters:
+      # MASSIVE 的意图标签名容易踩坑；更稳妥用中文问句关键词过滤
+      regex_any:
+        - "转账|余额|银行卡|信用卡|还款|账单|汇率|开卡|开户|挂失|限额|费用|手续费|理财|基金|外汇|支付|网点|营业|密码"
+      # 如果你确认掌握该数据集的意图枚举，再开启 intent_in：
+      # intent_in: ["transfer_money", "check_balance", "open_account", "exchange_rate", "lost_or_stolen_card"]
+    postprocess:
+      steps:
+        - generate_by_rules: finance_qa_v1

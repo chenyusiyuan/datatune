@@ -1,0 +1,25 @@
+llm_backend:
+  gen_model: qwen2.5:14b-instruct
+  judge_model: qwen2.5:14b-instruct
+  temperature:
+    init: 0.4
+    max: 1.0
+self_consistency:
+  k: 5
+  vote: majority_llm_judge   # majority_llm_judge | rule_score
+  max_retries: 1
+filters:
+  lang: zh
+  output_len:
+    min: 12
+    max: 240
+  ngram_novelty:
+    n: 4
+    rougeL_threshold: 0.9
+  sensitive_keywords: []
+limits:
+  max_retrieved_per_dataset: -1   # -1 = no limit per dataset, 0 = skip
+  synthetic_num_examples: 0       # 0 = no pure synthetic data, N>0 = generate N
+logging:
+  save_plan: true
+  save_candidates: true

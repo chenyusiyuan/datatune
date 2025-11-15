@@ -177,7 +177,7 @@ def main():
         status["examples"] = prompt_spec.examples
         status["prompt_has_been_parsed"] = True
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         line_print("Prompt parsed.")
 
     if propmt_has_been_parsed and not dataset_has_been_retrieved:
@@ -233,7 +233,7 @@ def main():
             status["retrieved_dataset_dict_root"] = None
         status["dataset_has_been_retrieved"] = True
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
 
     if (
         propmt_has_been_parsed
@@ -278,7 +278,7 @@ def main():
         status["model_has_been_retrieved"] = True
         status["model_name"] = top_model_name[rank - 1]
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
 
     if (
         propmt_has_been_parsed
@@ -341,7 +341,7 @@ def main():
         dataset_has_been_generated = True
         status["dataset_has_been_generated"] = True
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         line_print("The generated dataset is ready.")
         time.sleep(2)
 
@@ -554,7 +554,7 @@ def main():
         status["trained_model_root"] = str(trained_model_root)
         status["trained_tokenizer_root"] = str(trained_tokenizer_root)
         with open("status.yaml", "w") as f:
-            yaml.safe_dump(status, f)
+            yaml.safe_dump(status, f, allow_unicode=True)
         line_print("Model has been trained and evaluated.")
 
     t5_model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
