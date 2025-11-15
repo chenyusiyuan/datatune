@@ -18,7 +18,17 @@ DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 #   cli运行命令
 #export P2M_OLLAMA_BASES=http://localhost:11434,http://localhost:11435
 #   python -m prompt2model.cli.p2m 2>&1 | tee -a run.log
+#  nohup python -m prompt2model.cli.p2m >> run.log 2>&1 &
 
+# 想看进度时另开一个终端：
+
+# tail -f run.log
+
+
+#nohup env CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=:11434 ollama serve > ollama_gpu0.log 2>&1 &
+#nohup env CUDA_VISIBLE_DEVICES=1 OLLAMA_HOST=:11435 ollama serve > ollama_gpu1.log 2>&1 &
+#ps aux | grep ollama
+#pkill -f "ollama serve"
 
     # # GPU0
     # CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=:11434 ollama serve
