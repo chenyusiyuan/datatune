@@ -3,6 +3,16 @@ then visualize clusters with Ollama embeddings, and exit."""
 
 import os
 
+# 指令生成模型 (用于数据合成和转换)
+DEFAULT_GEN_MODEL = "llama3.1:8b"
+# 可选模型: "qwen2.5:7b", "qwen2.5:14b-instruct", "llama3:latest", "mistral:7b"
+
+# 向量嵌入模型 (用于数据可视化)
+DEFAULT_EMBED_MODEL = "nomic-embed-text"
+# 可选模型: "bge-m3:latest", "nomic-embed-text:latest"
+
+DEFAULT_OLLAMA_BASE = "http://localhost:11434"
+
 # Ensure Hugging Face traffic goes through mirror before importing HF-dependent libs.
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
@@ -323,9 +333,9 @@ def main():
     # ===== 后端与模型（本地 Ollama） =====
     os.environ["P2M_BACKEND"] = "ollama"
     # 指令大模型（合成用）
-    os.environ["P2M_GEN_MODEL"] = os.getenv("P2M_GEN_MODEL", "llama3.1")
+    os.environ["P2M_GEN_MODEL"] = os.getenv("P2M_GEN_MODEL", DEFAULT_GEN_MODEL)
     # 向量模型（可视化嵌入）
-    os.environ["P2M_OLLAMA_EMBED_MODEL"] = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    os.environ["P2M_OLLAMA_EMBED_MODEL"] = os.getenv("P2M_OLLAMA_EMBED_MODEL", DEFAULT_EMBED_MODEL)
 
     print_logo()
 

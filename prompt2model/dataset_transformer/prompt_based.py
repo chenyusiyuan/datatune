@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Callable
 
 import datasets
@@ -98,14 +99,14 @@ class PromptBasedDatasetTransformer(DatasetTransformer):
         return transform_prompts
 
     def generate_responses(
-        self, transform_prompts_batch: list[str], model_name="gpt-3.5-turbo"
+        self, transform_prompts_batch: list[str], model_name=None
     ) -> list[str]:
         """Generate responses for the given transform prompts.
 
         Args:
             transform_prompts_batch: A list of transform prompts.
             model_name: The name of the model to use. Defaults to
-                    "gpt-3.5-turbo" to save costs.
+                    P2M_GEN_MODEL environment variable or "llama3.1:8b".
 
         Returns:
             A list of generated responses.
@@ -114,6 +115,8 @@ class PromptBasedDatasetTransformer(DatasetTransformer):
             API_ERRORS: If there is an error with the API.
 
         """
+        if model_name is None:
+            model_name = os.getenv("P2M_GEN_MODEL", "llama3.1:8b")
         api_call_counter = 0
         last_error = None
         responses = []

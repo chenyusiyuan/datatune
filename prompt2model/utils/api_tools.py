@@ -61,6 +61,29 @@ ERROR_ERRORS_TO_MESSAGES: Dict[Any, str] = {
 }
 BUFFER_DURATION = 2
 
+class AttrDict(dict):
+    """Dict subclass that also allows attribute-style access.
+
+    This is used to adapt plain dict API responses so existing code that expects
+    ``resp.choices`` or nested ``.message.content`` continues to work.
+    """
+
+    def __getattr__(self, item: str) -> Any:
+        try:
+            return self[item]
+        except KeyError as e:  # pragma: no cover - trivial
+            raise AttributeError(item) from e
+
+
+def _to_attrdict(obj: Any) -> Any:
+    """Recursively convert dicts/lists into AttrDict containers."""
+    if isinstance(obj, dict):
+        return AttrDict({k: _to_attrdict(v) for k, v in obj.items()})
+    if isinstance(obj, list):
+        return [_to_attrdict(v) for v in obj]
+    return obj
+
+
 # =========================
 # Utility
 # =========================
@@ -113,7 +136,7 @@ class APIAgent:
         max_tokens: Optional[int] = 4000,
         api_base: Optional[str] = None,
     ):
-        self.model_name = model_name or os.getenv("P2M_GEN_MODEL", "llama3.1")
+        self.model_name = model_name or os.getenv("P2M_GEN_MODEL", "llama3.1:8b")
         self.max_tokens = max_tokens
         self.api_base = api_base  # for OpenAI-like endpoints (optional)
 
@@ -306,13 +329,17 @@ class APIAgent:
     ) -> Dict[str, Any]:
         """Synchronous single completion; returns OpenAI-like dict."""
         if self.backend == "litellm":
-            return self._completion_litellm(
+            completion_dict = self._completion_litellm(
                 prompt, temperature, presence_penalty, frequency_penalty, token_buffer
             )
         else:
-            return self._completion_ollama(
+            completion_dict = self._completion_ollama(
                 prompt, temperature, presence_penalty, frequency_penalty
             )
+        # Wrap dict responses so downstream code can use attribute or key access.
+        if isinstance(completion_dict, dict):
+            return _to_attrdict(completion_dict)
+        return completion_dict
 
     async def generate_batch_completion(
         self,

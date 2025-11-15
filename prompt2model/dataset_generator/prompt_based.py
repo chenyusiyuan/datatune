@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import json
 import math
 import random
@@ -31,7 +32,7 @@ logger = get_formatted_logger("DatasetGenerator")
 
 # ===== 使用本地 Ollama 的指令模型生成合成数据 =====
 # 可按需改为 "llama3.2:3b-instruct" / "qwen2.5:7b-instruct" 等已在 Ollama 中可用的模型名称
-DEFAULT_GEN_MODEL = "llama3.1:8b"
+DEFAULT_GEN_MODEL = os.getenv("P2M_GEN_MODEL", "llama3.1:8b")
 
 
 @dataclass(frozen=True)

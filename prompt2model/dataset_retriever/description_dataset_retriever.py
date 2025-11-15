@@ -27,6 +27,35 @@ datasets.utils.logging.disable_progress_bar()
 logger = get_formatted_logger("DescriptionDatasetRetriever")
 
 
+def _coerce_to_available(col: str, available: set[str]) -> str:
+    """Map LLM-suggested column names to actual dataset columns where possible.
+
+    Heuristics are applied only when ``col`` is not already in ``available``:
+    - If name contains 'text' -> map to 'text' when present.
+    - If name contains utterance/query/question/sentence -> map to 'text'.
+    - If name contains intent/label/category/class -> map to 'intent'.
+    - If only two columns are available, prefer 'text' then 'intent'.
+    """
+    if col in available:
+        return col
+
+    low = (col or "").lower()
+    if "text" in low and "text" in available:
+        return "text"
+    if any(k in low for k in ("utterance", "query", "question", "sentence")) and "text" in available:
+        return "text"
+    if any(k in low for k in ("intent", "label", "category", "class")) and "intent" in available:
+        return "intent"
+
+    if len(available) == 2:
+        if "text" in available:
+            return "text"
+        if "intent" in available:
+            return "intent"
+
+    return col
+
+
 class DescriptionDatasetRetriever(DatasetRetriever):
     """Retrieve a dataset from HuggingFace, based on similarity to the prompt."""
 
@@ -261,16 +290,20 @@ class DescriptionDatasetRetriever(DatasetRetriever):
         optional_keys = ["ambiguous", "irrelevant"]
 
         response = parse_prompt_to_fields(prompt, required_keys, optional_keys)
-        input_columns = response["input"]
-        output_column = response["output"]
-        if len(input_columns) < 1 or len(output_column) != 1:
+        input_columns: list[str] = response["input"]
+        output_column_list: list[str] = response["output"]
+        if len(input_columns) < 1 or len(output_column_list) != 1:
             raise RuntimeError(
-                f"Incorrect number of columns: {input_columns}, {output_column} "
+                f"Incorrect number of columns: {input_columns}, {output_column_list} "
             )  # noqa: E501
 
-        dataset_columns = dataset_columns
+        # Heuristically coerce LLM-suggested columns to actual dataset columns.
+        available_cols = set(dataset_columns)
+        input_columns = [_coerce_to_available(c, available_cols) for c in input_columns]
+        output_column = _coerce_to_available(output_column_list[0], available_cols)
+
         incorrect_columns = [
-            col for col in input_columns + output_column if col not in dataset_columns
+            col for col in input_columns + [output_column] if col not in dataset_columns
         ]
         if len(incorrect_columns) > 0:
             raise RuntimeError(
@@ -278,7 +311,7 @@ class DescriptionDatasetRetriever(DatasetRetriever):
                 f"not in the list of columns in the dataset ({dataset_columns})."
             )
 
-        return input_columns, output_column[0]
+        return input_columns, output_column
 
     def canonicalize_dataset_using_columns(
         self,
@@ -561,7 +594,8 @@ class DescriptionDatasetRetriever(DatasetRetriever):
                 top_dataset_info["sample_row"],
             )
         except Exception as e:
-            logger.warning("Column selection failed: ", e)
+            # Proper logging formatting to avoid TypeError inside logging.
+            logger.warning("Column selection failed: %s", e)
             return None
 
         logger.info(

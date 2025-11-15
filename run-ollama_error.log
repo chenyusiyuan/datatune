@@ -1,0 +1,111 @@
+                        ____                            _     ____    __  __           _      _                         
+                       |  _ \ _ __ ___  _ __ ___  _ __ | |_  |___ \  |  \/  | ___   __| | ___| |                        
+                       | |_) | '__/ _ \| '_ ` _ \| '_ \| __|   __) | | |\/| |/ _ \ / _` |/ _ \ |                        
+                       |  __/| | | (_) | | | | | | |_) | |_   / __/  | |  | | (_) | (_| |  __/ |                        
+                       |_|   |_|  \___/|_| |_| |_| .__/ \__| |_____| |_|  |_|\___/ \__,_|\___|_|                        
+                                                 |_|                                                                    
+                                                                                                                        
+[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251115_005324
+Do you want to start from scratch? (y/n)
+Loaded prompt from file: prompt.yaml
+Retrieving dataset...
+Do you want to perform data transformation? (y/n)
+Data transformation converts retrieved data into the desired format as per the prompt.
+Enter the number of data points you want to transform (the remaining will be discarded):
+2025-11-15 00:53:41,592 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
+INFO:DescriptionDatasetRetriever:Top datasets retrieved.
+2025-11-15 00:54:25,872 - DescriptionDatasetRetriever - INFO - Chosen dataset and config: dataset_name='tlc' config_name='tlcv2.0'
+INFO:DescriptionDatasetRetriever:Chosen dataset and config: dataset_name='tlc' config_name='tlcv2.0'
+2025-11-15 00:54:30,810 - DescriptionDatasetRetriever - WARNING - Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['ch_num', 'title', 'text']).
+WARNING:DescriptionDatasetRetriever:Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['ch_num', 'title', 'text']).
+/home/chenyusiyuan/miniconda3/envs/p2m/lib/python3.9/site-packages/datasets/load.py:1486: FutureWarning: The repository for tlc contains custom code which must be executed to correctly load the dataset. You can inspect the repository content at https://hf.co/datasets/tlc
+You can avoid this message in future by passing the argument `trust_remote_code=True`.
+Passing `trust_remote_code=True` will be mandatory to load this dataset from the next major release of `datasets`.
+  warnings.warn(
+2025-11-15 00:54:49,165 - DescriptionDatasetRetriever - INFO - Dataset loaded
+INFO:DescriptionDatasetRetriever:Dataset loaded
+2025-11-15 00:54:49,166 - DescriptionDatasetRetriever - INFO - Proceeding without column filtering for auto-transform; using all columns from the dataset.
+INFO:DescriptionDatasetRetriever:Proceeding without column filtering for auto-transform; using all columns from the dataset.
+  0%|          | 0/1 [00:00<?, ?it/s]WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+100%|██████████| 1/1 [00:15<00:00, 15.04s/it]100%|██████████| 1/1 [00:15<00:00, 15.04s/it]
+2025-11-15 00:55:09,475 - ParseJsonResponses - WARNING - No valid JSON found in the response.
+WARNING:ParseJsonResponses:No valid JSON found in the response.
+2025-11-15 00:55:09,475 - DescriptionDatasetRetriever - ERROR - Length of inputs and outputs must be >0 and equal.
+ERROR:DescriptionDatasetRetriever:Length of inputs and outputs must be >0 and equal.
+2025-11-15 00:55:09,475 - DescriptionDatasetRetriever - INFO - Data transformation completed
+INFO:DescriptionDatasetRetriever:Data transformation completed
+2025-11-15 00:55:45,158 - DescriptionDatasetRetriever - INFO - Chosen dataset and config: dataset_name='tlc' config_name='tlcv1.0'
+INFO:DescriptionDatasetRetriever:Chosen dataset and config: dataset_name='tlc' config_name='tlcv1.0'
+2025-11-15 00:55:50,083 - DescriptionDatasetRetriever - WARNING - Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['ch_num', 'title', 'text']).
+WARNING:DescriptionDatasetRetriever:Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['ch_num', 'title', 'text']).
+2025-11-15 00:56:25,311 - DescriptionDatasetRetriever - INFO - Dataset loaded
+INFO:DescriptionDatasetRetriever:Dataset loaded
+2025-11-15 00:56:25,311 - DescriptionDatasetRetriever - INFO - Proceeding without column filtering for auto-transform; using all columns from the dataset.
+INFO:DescriptionDatasetRetriever:Proceeding without column filtering for auto-transform; using all columns from the dataset.
+  0%|          | 0/1 [00:00<?, ?it/s]WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+100%|██████████| 1/1 [00:15<00:00, 15.03s/it]100%|██████████| 1/1 [00:15<00:00, 15.03s/it]
+2025-11-15 00:56:45,660 - ParseJsonResponses - WARNING - No valid JSON found in the response.
+WARNING:ParseJsonResponses:No valid JSON found in the response.
+2025-11-15 00:56:45,660 - DescriptionDatasetRetriever - ERROR - Length of inputs and outputs must be >0 and equal.
+ERROR:DescriptionDatasetRetriever:Length of inputs and outputs must be >0 and equal.
+2025-11-15 00:56:45,660 - DescriptionDatasetRetriever - INFO - Data transformation completed
+INFO:DescriptionDatasetRetriever:Data transformation completed
+2025-11-15 00:57:03,516 - DescriptionDatasetRetriever - INFO - Chosen dataset and config: dataset_name='tlc' config_name='tnhcv1.0'
+INFO:DescriptionDatasetRetriever:Chosen dataset and config: dataset_name='tlc' config_name='tnhcv1.0'
+2025-11-15 00:57:07,941 - DescriptionDatasetRetriever - WARNING - Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['text']).
+WARNING:DescriptionDatasetRetriever:Column selection failed: One or more columns (['answer_text']) were output that were not in the list of columns in the dataset (['text']).
+2025-11-15 00:57:35,306 - DescriptionDatasetRetriever - INFO - Dataset loaded
+INFO:DescriptionDatasetRetriever:Dataset loaded
+2025-11-15 00:57:35,306 - DescriptionDatasetRetriever - INFO - Proceeding without column filtering for auto-transform; using all columns from the dataset.
+INFO:DescriptionDatasetRetriever:Proceeding without column filtering for auto-transform; using all columns from the dataset.
+  0%|          | 0/100 [00:00<?, ?it/s]WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 404, message='Not Found', url='http://localhost:11434/api/generate'. Retry in 5s.

@@ -13,6 +13,76 @@ from prompt2model.utils.api_tools import API_ERRORS, handle_api_error
 logger = get_formatted_logger("ParseJsonResponses")
 
 
+def _join_parts(parts: Any) -> str:
+    """Join multi-part content (e.g., OpenAI/Anthropic style) into a string."""
+    out = []
+    for p in parts:
+        if isinstance(p, dict) and p.get("type") == "text":
+            out.append(p.get("text", ""))
+        else:
+            out.append(str(p))
+    return "\n".join(out)
+
+
+def extract_content(resp: Any) -> str:
+    """Normalize any LLM response object into a plain string."""
+    # 1) Already a plain string
+    if isinstance(resp, str):
+        return resp
+
+    try:
+        # 2) Dict-style payload (e.g., litellm/OpenAI-compatible)
+        if isinstance(resp, dict):
+            choices = resp.get("choices") or []
+            if choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    msg = first.get("message")
+                    if isinstance(msg, dict):
+                        content = msg.get("content")
+                        if isinstance(content, list):
+                            return _join_parts(content)
+                        if content is not None:
+                            return str(content)
+                    # completion-style text field
+                    if "text" in first and first["text"] is not None:
+                        return str(first["text"])
+
+            # Anthropic / generic content at top level
+            content = resp.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                return _join_parts(content)
+
+        # 3) OpenAI SDK objects (have .choices attribute)
+        if hasattr(resp, "choices"):
+            choices = getattr(resp, "choices")
+            if choices:
+                first = choices[0]
+                # object-style message
+                msg = getattr(first, "message", None)
+                if msg is not None:
+                    content = getattr(msg, "content", None)
+                    if isinstance(content, list):
+                        return _join_parts(content)
+                    if content is not None:
+                        return str(content)
+                # completion-style text
+                text = getattr(first, "text", None)
+                if text is not None:
+                    return str(text)
+    except Exception:
+        # Fall through to generic stringification below
+        pass
+
+    # 4) Fallback: JSON-encode or plain str(), to avoid TypeError in regex code
+    try:
+        return json.dumps(resp, ensure_ascii=False)
+    except Exception:
+        return str(resp)
+
+
 def find_and_parse_json(
     response: openai.Completion, required_keys: list, optional_keys: list = []
 ) -> dict | None:
@@ -31,9 +101,8 @@ def find_and_parse_json(
         final response as a Dictionary
         Else returns None.
     """
-    if not isinstance(response, str) and hasattr(response, "choices"):
-        response = response.choices[0]["message"]["content"]
-    correct_json = find_rightmost_brackets(response)
+    response_str = extract_content(response)
+    correct_json = find_rightmost_brackets(response_str)
 
     if correct_json is None:
         logger.warning("No valid JSON found in the response.")
@@ -88,10 +157,8 @@ def parse_dataset_config_responses(response: openai.ChatCompletion) -> dict:
     Returns:
         The extracted relevant information from the dataset configuration.
     """
-    if not isinstance(response, str) and hasattr(response, "choices"):
-        response_str = response.choices[0]["message"]["content"]
-    else:
-        response_str = response
+    # Normalize to a string first to handle dicts / SDK objects uniformly.
+    response_str = extract_content(response)
 
     pattern = r"\*\*(.*?)\*\*"
 
@@ -101,7 +168,12 @@ def parse_dataset_config_responses(response: openai.ChatCompletion) -> dict:
         dataset_config = match.group(1)
     elif len(response_str.split()) >= 1:
         dataset_config = response_str.split()[-1].replace(".", "")
-    return {"name": dataset_config}
+
+    # Clean up bracketed options like "[a] small" -> "small".
+    cleaned = dataset_config.strip()
+    cleaned = re.sub(r"^\s*\[[^\]]+\]\s*", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return {"name": cleaned}
 
 
 def parse_prompt_to_fields(
@@ -143,13 +215,11 @@ def parse_prompt_to_fields(
     while True:
         api_call_counter += 1
         try:
-            response: openai.ChatCompletion | Exception = (
-                chat_api.generate_one_completion(
-                    prompt,
-                    temperature=0.01,
-                    presence_penalty=0,
-                    frequency_penalty=0,
-                )
+            response: openai.ChatCompletion | Exception = chat_api.generate_one_completion(  # type: ignore[assignment]
+                prompt,
+                temperature=0.01,
+                presence_penalty=0,
+                frequency_penalty=0,
             )
             extraction: dict[str, Any] | None = None
             if module_name == "col_selection":
@@ -166,6 +236,12 @@ def parse_prompt_to_fields(
         if api_call_counter >= max_api_calls:
             # In case we reach maximum number of API calls, we raise an error.
             logger.error("Maximum number of API calls reached.")
+            # Best-effort: log truncated raw response for debugging, if available.
+            try:
+                raw_text = extract_content(response)  # type: ignore[arg-type]
+                logger.debug("Last LLM raw response (truncated 200): %s", raw_text[:200])
+            except Exception:
+                pass
             raise RuntimeError("Maximum number of API calls reached.") from last_error
 
 
@@ -190,11 +266,14 @@ def make_single_api_request(prompt: str, max_api_calls: int = 10) -> str:
     while True:
         api_call_counter += 1
         try:
-            response: openai.ChatCompletion = chat_api.generate_one_completion(
-                prompt=prompt, temperature=0.01, presence_penalty=0, frequency_penalty=0
+            response: openai.ChatCompletion = chat_api.generate_one_completion(  # type: ignore[assignment]
+                prompt=prompt,
+                temperature=0.01,
+                presence_penalty=0,
+                frequency_penalty=0,
             )
             if response is not None:
-                return response.choices[0]["message"]["content"]
+                return extract_content(response)
 
         except API_ERRORS as e:
             last_error = e

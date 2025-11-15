@@ -5,28 +5,45 @@
                        |_|   |_|  \___/|_| |_| |_| .__/ \__| |_____| |_|  |_|\___/ \__,_|\___|_|                        
                                                  |_|                                                                    
                                                                                                                         
-[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251114_213519
+[RUN] output dir: /home/chenyusiyuan/prompt2model/runs/run_20251115_134312
 Do you want to start from scratch? (y/n)
 Loaded prompt from file: prompt.yaml
 Retrieving dataset...
 Do you want to perform data transformation? (y/n)
 Data transformation converts retrieved data into the desired format as per the prompt.
 Enter the number of data points you want to transform (the remaining will be discarded):
-2025-11-14 21:36:15,084 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
+2025-11-15 13:43:29,336 - DescriptionDatasetRetriever - INFO - Top datasets retrieved.
 INFO:DescriptionDatasetRetriever:Top datasets retrieved.
-[WARN] remote retrieval init/fetch failed: expected string or bytes-like object
-[fallback] building dataset from prompt examples.
-The dataset generation has not finished.
-Your input instruction:
-
-任务：生成“银行线上客服”对用户问题的标准回答（中文），并用于训练/分析金融客服QA数据。
-口径与合规要求：
-1) 隐私与脱敏：不得输出或猜测个人敏感信息（卡号/身份证号/余额/交易明细/验证码/密码等）。如需核验，请指引用户在“XX银行App-我的-安全中心”完成身份核验。
-2) 事实与范围：不捏造费率/利率/汇率/审批结果/额度等个性化数值；统一给“查询或办理路径”（页面位置/入口）。
-3) 风险披露：涉及“理财、贷款、外汇”等，需提醒风险或政策时点，以系统或条款为准。
-4) 紧急处置：遇到“挂失/盗刷/交易异常/身份被冒用”等高风险情景，第一时间给出“紧急挂失/冻结”与“人工客服/网点”的具体路径。
-5) 话术：专业克制、礼貌友好；尽量 2～5 句说清楚；流程可用 1～3 条项目符号。
-输出：仅输出“回答文本”。（label 仅在数据字段中使用，用于标注意图类别）
-
-Your input few-shot examples count: 20
-Enter the number of examples you wish to generate (you can enter 0 to skip generation):
+2025-11-15 13:44:01,074 - DescriptionDatasetRetriever - INFO - Chosen dataset and config: dataset_name='clinc_oos' config_name='plus'
+INFO:DescriptionDatasetRetriever:Chosen dataset and config: dataset_name='clinc_oos' config_name='plus'
+2025-11-15 13:44:05,470 - DescriptionDatasetRetriever - INFO - Column selection completed. Selected columns: ['text', 'text']
+INFO:DescriptionDatasetRetriever:Column selection completed. Selected columns: ['text', 'text']
+2025-11-15 13:44:18,438 - DescriptionDatasetRetriever - INFO - Dataset loaded
+INFO:DescriptionDatasetRetriever:Dataset loaded
+2025-11-15 13:44:18,443 - DescriptionDatasetRetriever - INFO - Unnecessary columns removed
+INFO:DescriptionDatasetRetriever:Unnecessary columns removed
+  0%|          | 0/100 [00:00<?, ?it/s]  1%|          | 1/100 [00:11<18:27, 11.19s/it]  2%|▏         | 2/100 [00:15<11:38,  7.13s/it]  3%|▎         | 3/100 [00:18<08:36,  5.33s/it]  4%|▍         | 4/100 [00:19<05:46,  3.61s/it]  5%|▌         | 5/100 [00:28<08:46,  5.54s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+  7%|▋         | 7/100 [00:55<14:51,  9.58s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+  9%|▉         | 9/100 [01:23<17:26, 11.50s/it]WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
+WARNING:root:Ollama request failed: 500, message='Internal Server Error', url='http://localhost:11434/api/generate'. Retry in 5s.
