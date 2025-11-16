@@ -57,6 +57,41 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return data
 
 
+def _load_prompt_examples(task_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Load few-shot examples for pure synthetic generation.
+
+    Priority:
+    1) task.examples in task_rules YAML (config.task_rules.yaml);
+    2) examples field from prompt YAML (P2M_PROMPT_FILE or prompt.yaml);
+    3) otherwise, return an empty list (no few-shot guidance).
+    """
+    # 1) Prefer explicit examples under task config, if present.
+    task_block = task_cfg.get("task", {}) or {}
+    examples = task_block.get("examples")
+    if isinstance(examples, list) and examples:
+        return examples
+
+    # 2) Fallback: load examples from prompt.yaml-style file.
+    prompt_file = os.getenv("P2M_PROMPT_FILE") or "prompt.yaml"
+    path = Path(prompt_file)
+    if not path.exists():
+        return []
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            meta = yaml.safe_load(f) or {}
+    except Exception as exc:  # pragma: no cover - IO robustness
+        logger.warning("Failed to load prompt file %s: %s", path, exc)
+        return []
+
+    exs = meta.get("examples", [])
+    if not isinstance(exs, list):
+        return []
+
+    # Keep as-is; downstream generator is robust to dict/str formats.
+    return exs
+
+
 def _ensure_run_dir(output_dir: Path, run_id: str | None = None) -> Path:
     if run_id is None:
         from time import strftime
@@ -72,6 +107,16 @@ def _dedup_dataset(ds: datasets.Dataset) -> datasets.Dataset:
     from p2m import _post_dedup_dataset  # type: ignore[import]
 
     return _post_dedup_dataset(ds)
+
+
+def _make_spec_cache_id(spec: Dict[str, Any], idx: int) -> str:
+    """Build a stable, filesystem-safe id for a fixed dataset spec."""
+    dataset_name = str(spec.get("dataset_name", f"ds{idx}"))
+    config_name = str(spec.get("config_name", "default"))
+    split = str(spec.get("split", "train"))
+    base = f"{idx}_{dataset_name}_{config_name}_{split}"
+    safe = "".join(c if c.isalnum() or c in "-._" else "_" for c in base)
+    return safe
 
 
 def _export_sidecars(ds: datasets.Dataset, out_stem: Path) -> None:
@@ -130,6 +175,9 @@ def run_fixed_pipeline(
     task_cfg = _load_yaml(task_rules)
     gen_cfg = _load_yaml(gen_config)
 
+    # Optional few-shot guidance for pure synthetic generation.
+    prompt_examples: List[Dict[str, Any]] = _load_prompt_examples(task_cfg)
+
     # Optional limits on how many examples to use.
     limits_cfg: Dict[str, Any] = dict(gen_cfg.get("limits", {}) or {})
     try:
@@ -175,52 +223,73 @@ def run_fixed_pipeline(
     loader = FixedDatasetLoader()
     all_transformed: List[datasets.Dataset] = []
 
-    for spec in datasets_specs:
-        # Load DatasetDict with a single spec to keep postprocess mapping simple.
-        logger.info(
-            "------ Processing fixed dataset: %s (config=%s, split=%s)",
-            spec.get("dataset_name"),
-            spec.get("config_name"),
-            spec.get("split", "train"),
-        )
-        ddict = loader.load_all([spec])
-        train = ddict["train"]
-        if len(train) == 0:
-            logger.warning(
-                "Fixed dataset %s produced no rows after filtering; skipping.",
-                spec.get("dataset_name"),
-            )
-            continue
+    for idx, spec in enumerate(datasets_specs):
+        cache_id = _make_spec_cache_id(spec, idx)
+        cache_dir = run_dir / f"transformed_{cache_id}"
 
-        # Optional cap per dataset after filtering.
-        if max_ret_per_ds == 0:
+        # Load DatasetDict with a single spec to keep postprocess mapping simple.
+        if cache_dir.exists():
             logger.info(
-                "Skipping dataset %s because limits.max_retrieved_per_dataset=0",
+                "------ Found cached transformed dataset for %s at %s, loading.",
                 spec.get("dataset_name"),
+                cache_dir,
             )
-            continue
-        if max_ret_per_ds > 0 and len(train) > max_ret_per_ds:
+            transformed = datasets.load_from_disk(str(cache_dir))
+        else:
             logger.info(
-                "Limiting dataset %s from %d to %d rows (limits.max_retrieved_per_dataset).",
+                "------ Processing fixed dataset: %s (config=%s, split=%s)",
+                spec.get("dataset_name"),
+                spec.get("config_name"),
+                spec.get("split", "train"),
+            )
+            ddict = loader.load_all([spec])
+            train = ddict["train"]
+            if len(train) == 0:
+                logger.warning(
+                    "Fixed dataset %s produced no rows after filtering; skipping.",
+                    spec.get("dataset_name"),
+                )
+                continue
+
+            # Optional cap per dataset after filtering.
+            if max_ret_per_ds == 0:
+                logger.info(
+                    "Skipping dataset %s because limits.max_retrieved_per_dataset=0",
+                    spec.get("dataset_name"),
+                )
+                continue
+            if max_ret_per_ds > 0 and len(train) > max_ret_per_ds:
+                logger.info(
+                    "Limiting dataset %s from %d to %d rows (limits.max_retrieved_per_dataset).",
+                    spec.get("dataset_name"),
+                    len(train),
+                    max_ret_per_ds,
+                )
+                # Stable prefix selection; 如需随机子集可后续改为 shuffle 再 select.
+                train = train.select(range(max_ret_per_ds))
+
+            logger.info(
+                "Loaded fixed dataset %s with %d rows.",
                 spec.get("dataset_name"),
                 len(train),
-                max_ret_per_ds,
             )
-            # Stable prefix selection; 如需随机子集可后续改为 shuffle 再 select.
-            train = train.select(range(max_ret_per_ds))
+            logger.info("Starting TransformExecutor for dataset %s", spec.get("dataset_name"))
+            executor = TransformExecutor(
+                expanded_spec=expanded_spec,
+                gen_cfg=gen_cfg,
+                run_dir=run_dir,
+            )
+            transformed = executor.transform_dataset(
+                train,
+                mapping=spec,
+                postprocess_cfg=spec.get("postprocess"),
+            )
+            try:
+                transformed.save_to_disk(str(cache_dir))
+                logger.info("Saved transformed dataset cache to %s", cache_dir)
+            except Exception as exc:  # pragma: no cover - IO robustness
+                logger.warning("Failed to save transformed dataset cache to %s: %s", cache_dir, exc)
 
-        logger.info(
-            "Loaded fixed dataset %s with %d rows.",
-            spec.get("dataset_name"),
-            len(train),
-        )
-        logger.info("Starting TransformExecutor for dataset %s", spec.get("dataset_name"))
-        executor = TransformExecutor(
-            expanded_spec=expanded_spec,
-            gen_cfg=gen_cfg,
-            run_dir=run_dir,
-        )
-        transformed = executor.transform_dataset(train, mapping=spec, postprocess_cfg=spec.get("postprocess"))
         all_transformed.append(transformed)
 
     if not all_transformed:
@@ -235,57 +304,77 @@ def run_fixed_pipeline(
     # 3) 纯合成数据（可选）
     synthetic_ds = None
     if synthetic_num_examples > 0:
-        logger.info("Starting pure synthetic generation: %d examples", synthetic_num_examples)
-        try:
-            from prompt2model.dataset_generator.base import DatasetSplit
-            from prompt2model.dataset_generator.prompt_based import PromptBasedDatasetGenerator
-            from prompt2model.prompt_parser import MockPromptSpec, TaskType
+        synth_cache_dir = run_dir / "synthetic_dataset"
+        if synth_cache_dir.exists():
+            logger.info("Found cached synthetic dataset at %s, loading.", synth_cache_dir)
+            try:
+                synthetic_ds = datasets.load_from_disk(str(synth_cache_dir))
+            except Exception as exc:  # pragma: no cover - IO robustness
+                logger.warning("Failed to load cached synthetic dataset %s: %s", synth_cache_dir, exc)
+                synthetic_ds = None
 
-            task_block = task_cfg.get("task", {}) or {}
-            base_instruction = task_block.get("base_instruction", "").strip()
-            if not base_instruction:
-                base_instruction = (
-                    "根据用户问题生成一个合规、安全、简明的回答，"
-                    "输入为 Question: ...，输出仅包含最终答复。"
+        if synthetic_ds is None:
+            logger.info("Starting pure synthetic generation: %d examples", synthetic_num_examples)
+            try:
+                from prompt2model.dataset_generator.base import DatasetSplit
+                from prompt2model.dataset_generator.prompt_based import PromptBasedDatasetGenerator
+                from prompt2model.prompt_parser import MockPromptSpec, TaskType
+
+                task_block = task_cfg.get("task", {}) or {}
+                base_instruction = str(task_block.get("base_instruction", "")).strip()
+                if not base_instruction:
+                    base_instruction = (
+                        "根据用户问题生成一个合规、安全、简明的回答，"
+                        "输入为 Question: ...，输出仅包含最终答复。"
+                    )
+                # Few-shot examples:
+                # - Prefer task.examples in task_rules YAML;
+                # - Then fallback to prompt.yaml examples (if present);
+                # - If both missing, run zero-shot as before.
+                examples = prompt_examples if isinstance(prompt_examples, list) else None
+                prompt_spec = MockPromptSpec(TaskType.TEXT_GENERATION, base_instruction, examples)
+
+                llm_backend_cfg = gen_cfg.get("llm_backend", {}) or {}
+                temp_cfg = llm_backend_cfg.get("temperature", {}) or {}
+                initial_temperature = float(temp_cfg.get("init", 0.4))
+                max_temperature = float(temp_cfg.get("max", 1.0))
+                presence_penalty = float(llm_backend_cfg.get("presence_penalty", 0.0))
+                frequency_penalty = float(llm_backend_cfg.get("frequency_penalty", 0.0))
+                responses_per_request = int(llm_backend_cfg.get("responses_per_request", 1))
+                max_batch_size = int(llm_backend_cfg.get("max_batch_size", 3))
+                requests_per_minute = int(llm_backend_cfg.get("requests_per_minute", 80))
+
+                gen = PromptBasedDatasetGenerator(
+                    initial_temperature=initial_temperature,
+                    max_temperature=max_temperature,
+                    presence_penalty=presence_penalty,
+                    frequency_penalty=frequency_penalty,
+                    max_batch_size=max_batch_size,
+                    responses_per_request=responses_per_request,
+                    requests_per_minute=requests_per_minute,
+                    filter_duplicated_examples=True,
                 )
-            prompt_spec = MockPromptSpec(TaskType.TEXT_GENERATION, base_instruction, None)
-
-            llm_backend_cfg = gen_cfg.get("llm_backend", {}) or {}
-            temp_cfg = llm_backend_cfg.get("temperature", {}) or {}
-            initial_temperature = float(temp_cfg.get("init", 0.4))
-            max_temperature = float(temp_cfg.get("max", 1.0))
-            presence_penalty = float(llm_backend_cfg.get("presence_penalty", 0.0))
-            frequency_penalty = float(llm_backend_cfg.get("frequency_penalty", 0.0))
-            responses_per_request = int(llm_backend_cfg.get("responses_per_request", 1))
-            max_batch_size = int(llm_backend_cfg.get("max_batch_size", 3))
-            requests_per_minute = int(llm_backend_cfg.get("requests_per_minute", 80))
-
-            gen = PromptBasedDatasetGenerator(
-                initial_temperature=initial_temperature,
-                max_temperature=max_temperature,
-                presence_penalty=presence_penalty,
-                frequency_penalty=frequency_penalty,
-                max_batch_size=max_batch_size,
-                responses_per_request=responses_per_request,
-                requests_per_minute=requests_per_minute,
-                filter_duplicated_examples=True,
-            )
-            synth_raw = gen.generate_dataset_split(
-                prompt_spec, synthetic_num_examples, split=DatasetSplit.TRAIN
-            )
-            # 统一列名以便后续去重/可视化
-            synthetic_ds = datasets.Dataset.from_dict(
-                {
-                    "input": list(synth_raw["input_col"]),
-                    "output": list(synth_raw["output_col"]),
-                    "label": ["synthetic"] * len(synth_raw),
-                    "source": ["synthetic"] * len(synth_raw),
-                }
-            )
-            logger.info("Pure synthetic generation finished: %d examples", len(synthetic_ds))
-        except Exception as exc:  # pragma: no cover - generation is best-effort
-            logger.warning("Synthetic generation failed, skipping synthetic step: %s", exc)
-            synthetic_ds = None
+                synth_raw = gen.generate_dataset_split(
+                    prompt_spec, synthetic_num_examples, split=DatasetSplit.TRAIN
+                )
+                # 统一列名以便后续去重/可视化
+                synthetic_ds = datasets.Dataset.from_dict(
+                    {
+                        "input": list(synth_raw["input_col"]),
+                        "output": list(synth_raw["output_col"]),
+                        "label": ["synthetic"] * len(synth_raw),
+                        "source": ["synthetic"] * len(synth_raw),
+                    }
+                )
+                try:
+                    synthetic_ds.save_to_disk(str(synth_cache_dir))
+                    logger.info("Saved synthetic dataset cache to %s", synth_cache_dir)
+                except Exception as exc:  # pragma: no cover - IO robustness
+                    logger.warning("Failed to save synthetic dataset cache to %s: %s", synth_cache_dir, exc)
+                logger.info("Pure synthetic generation finished: %d examples", len(synthetic_ds))
+            except Exception as exc:  # pragma: no cover - generation is best-effort
+                logger.warning("Synthetic generation failed, skipping synthetic step: %s", exc)
+                synthetic_ds = None
 
     # 4) 合并转换数据 + 合成数据，再做去重与导出。
     if synthetic_ds is not None:

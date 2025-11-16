@@ -1,6 +1,7 @@
 task:
   id: finance_cs_qa
   language: zh-CN
+
   io_format:
     input_template: 'Question: {question}{context_opt}'
     context_template: ' Context: {kv_pairs}'
@@ -8,22 +9,113 @@ task:
       lang: zh
       markdown: false
       single_string: true
+
   base_instruction: |
     你的任务是：在金融客服场景中进行问答，输出简明、合规、可执行的中文答复。
     输入是包含 Question 与可选 Context 的字符串；输出仅包含最终答复。
+
+  # 将 few-shot 示例放在 task.examples（覆盖外部 prompt 的示例）
+  examples:
+    - input: "Question: 储蓄卡开户需要什么证件？"
+      output: "个人请携带有效身份证件到网点办理；未成年人需监护人到场并提供关系证明，具体以当地监管与银行要求为准。"
+    - input: "Question: 手机银行转账到他行多久到账？"
+      output: "多数情况下实时到账；遇风控或系统维护可能延迟，最晚于下一工作日完成，以系统通知为准。"
+    - input: "Question: 信用卡年费如何减免？ Context: 客户等级=白金; 最近12个月刷卡次数=10; 渠道=App"
+      output: "年费按卡片规则减免，常见为当年消费达标笔数或金额即免；请在App卡片详情查看适用条件。"
+    - input: "Question: 账单日和还款日有什么区别？"
+      output: "账单日生成应还金额；需在还款日前（含当日）还款，逾期会计息并影响信用，具体日期见账单。"
+    - input: "Question: 只还最低还款有什么影响？"
+      output: "最低还款可保持账户正常，但未还部分自交易日起计息且不享受免息期，建议按时全额还款。"
+    - input: "Question: 信用卡取现如何计费？"
+      output: "取现通常收取手续费且自交易日起计息；费率与上限以您的用卡合同与银行公告为准。"
+    - input: "Question: 贷款提前还款流程是什么？"
+      output: "请在App或客服预约，确认是否有违约金与最小还款周期，按约携带身份证到网点或线上办理。"
+    - input: "Question: 房贷利率会变吗？"
+      output: "是否调整取决于合同约定的固定/浮动规则与重定价日；具体以合同为准。"
+    - input: "Question: 银行卡丢了怎么办？"
+      output: "请立即通过官方客服或App挂失并申请补卡；挂失期间账户可能受限，请以系统提示为准。"
+    - input: "Question: 收到短信要我把验证码发过去，是真的吗？"
+      output: "请勿提供验证码、密码或链接给任何人；官方不会索取此类信息，疑似欺诈请立即举报。"
+    - input: "Question: 基金赎回多久到账？"
+      output: "开放式基金一般T+1至T+3个交易日确认并到账，确切时间以基金合同与登记机构为准。"
+    - input: "Question: 银行理财能保证收益吗？"
+      output: "理财非保本，过往业绩不代表未来表现，不构成投资建议，请充分了解产品风险。"
+    - input: "Question: 每年个人结汇有无额度限制？"
+      output: "需遵守监管的年度额度与真实性用途申报，材料与额度以最新监管与银行规定为准。"
+    - input: "Question: 异地ATM取现收费吗？"
+      output: "可能产生跨行或网络方费用；标准以持卡行收费公告与ATM屏幕提示为准。"
+    - input: "Question: 转错账还能撤回吗？"
+      output: "转账成功通常无法单方撤回；可联系收款人协商，或通过银行发起协查但不保证结果。"
+    - input: "Question: 如何提升手机银行大额转账限额？"
+      output: "在App按指引完成身份校验后可提升；部分额度需网点或视频见证办理，以系统提示为准。"
+    - input: "Question: 修改预留手机号怎么操作？"
+      output: "可在App通过人脸或密码验证后修改；无法验证时，请携带身份证到网点办理。"
+    - input: "Question: 信用卡分期能提前结清吗？"
+      output: "可申请提前结清；需一次性支付剩余本金并按规则计收手续费，具体以合约为准。"
+    - input: "Question: 忘记支付密码怎么办？"
+      output: "请在App发起重置并完成身份核验；切勿向任何人透露验证码或密码。"
+    - input: "Question: 我要投诉，渠道有哪些？"
+      output: "可通过App在线客服、客服热线或营业网点提交，我们将按规定时限受理并反馈。"
+    - input: "Question: 账户长期未用会被销户吗？"
+      output: "长期不动户可能被限制或清理；请按通知完成身份复核或到网点确认保留需求。"
+    - input: "Question: 定期存款到期没取会怎样？"
+      output: "可能按签约选项自动转存或转为活期，具体以账户设置与银行规则为准。"
+    - input: "Question: 能否给我具体买哪只基金的建议？"
+      output: "不提供个性化投资建议；请结合风险承受能力并咨询持牌机构后决策。"
+    - input: "Question: 查询下我账户余额是多少？"
+      output: "出于安全无法代为查询或核验账户信息，请登录官方App或到网点办理。"
+    - input: "Question: 这不是金融问题，讲个笑话吧？"
+      output: "抱歉，我无法解答该问题，请联系人工客服。"
+
   answer_policies:
+    - "所有转换后的 QA 中，Question 与输出均为中文；原始为其它语言需转为自然、合规的中文表述。"
+    - "翻译英文原文时，应保持金融场景下的专业用语准确，例如“card” 优先译为 银行卡/信用卡/借记卡 等具体类型，而不要泛化为“卡片”。"
     - "不虚构具体费率/额度/专有名词/个人信息；不确定时说明“以合同/银行公告为准”。"
     - "涉投资/收益/市场走势：提示风险与“本回复不构成投资建议”。"
     - "任何索取验证码/密码/链接/OTP 的请求一律拒绝并提示仅通过官方渠道。"
     - "需线下或人工办理：给下一步与材料指引。"
     - "兜底：与金融无关或无法识别 → “抱歉，我无法解答该问题，请联系人工客服。”"
+
   style:
     tone: concise
     terms:
-      currency: ISO
-      number_sep: none
+      currency: ISO          # 货币使用 ISO 代码（如 CNY、USD）
+      number_sep: none       # 金额不加千分位
       clearing: "工作日/自然日、T+N 表述"
+      # —— 专业术语翻译与歧义消解（避免把 card 译成“卡片”）——
+      glossary:
+        credit card: 信用卡
+        debit card: 借记卡
+        bank card: 银行卡
+        card: 银行卡              # 默认不带限定时用“银行卡”
+        virtual card: 虚拟卡
+        prepaid card: 预付卡
+        card replacement: 补卡
+        card activation: 开卡/激活
+        statement: 账单
+        billing cycle: 账单周期
+        due date: 还款日
+        minimum payment: 最低还款额
+        credit limit: 信用额度
+        overdraft: 透支
+        wire transfer: 电汇
+        ach: "ACH（美国自动清算中心）"
+        swift: SWIFT
+        branch: 营业网点
+        fee: 手续费
+      disambiguation:
+        # 基于上下文的卡种消歧：命中任一关键词则按对应译法
+        prefer_rules:
+          - if_any: ["credit limit","statement","billing","APR","minimum payment","installment","repayment"]
+            then_use: 信用卡
+          - if_any: ["余额","ATM","存取","借记","工资卡","卡号","银联借记","储蓄"]
+            then_use: 借记卡
+          - else: 银行卡
+      translation_policies:
+        - "禁止将 card 直译为“卡片”；按 glossary/disambiguation 输出专业译法。"
+        - "专有缩写保留原文并在首次出现给出中文注释（如“ACH（美国自动清算中心）”）。"
+        - "统一术语与风格，避免同义词混用（如 手续费/费用，优先“手续费”）。"
+
   expansion_hints:
     - "覆盖账户/支付、卡片、转账、贷款、存款、理财/基金/外汇/保险、营业与渠道、安全合规、投诉。"
     - "必要时输出办理路径、凭证材料、时效。"
-
