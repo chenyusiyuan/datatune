@@ -9,7 +9,7 @@ DEFAULT_GEN_MODEL = "qwen2.5:14b-instruct"
 
 # 向量嵌入模型 (用于数据可视化)
 DEFAULT_EMBED_MODEL = "bge-m3:latest"
-# 可选模型: "bge-m3:latest", "nomic-embed-text:latest"
+# 默认使用 bge-m3:latest；如需其他嵌入模型，请通过环境变量 P2M_OLLAMA_EMBED_MODEL 覆盖。
 
 DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 
@@ -97,26 +97,118 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-# ===== 从输出文本派生可视化标签 =====
-_POLICY_PATTERNS = [
-    ("风险提示", re.compile(r"(不构成投资建议|风险|理财非保本|过往业绩不代表未来)", re.I)),
-    ("安全拒绝", re.compile(r"(验证码|密码|OTP|不会索取|请勿提供|不要提供|切勿|链接)", re.I)),
-    ("线下办理", re.compile(r"(网点|柜台|人工客服|到店|预约|携带.*身份证)", re.I)),
-    ("合规声明", re.compile(r"(以.*(公告|合同|规定|监管).*(为准)|以.*为准)", re.I)),
-    ("清算/时效", re.compile(r"(T\+\d|工作日|自然日|到账|清算|结算)", re.I)),
-    ("兜底话术", re.compile(r"(抱歉，我无法解答|联系人工客服)", re.I)),
-]
+# ===== Visualization tag config (priority + regex, YAML-overridable) =====
+_DEFAULT_VIZ_CFG = {
+    "priority": [
+        "empty_output",
+        "non_chinese",
+        "safe_refusal",
+        "security_action",
+        "risk_notice",
+        "compliance_note",
+        "timing_settlement",
+        "fee_or_limit",
+        "offline_handling",
+        "channel_guidance",
+        "ask_for_info",
+        "fallback_reply",
+        "general_reply",
+    ],
+    "patterns": {
+        "safe_refusal": [
+            r"(验证码|一次性.*密码|OTP|口令|密码|短信码|链接).*(不要|请勿|不得|不会索取)",
+            r"不会索取.*(验证码|密码|OTP|链接)",
+        ],
+        "security_action": [
+            r"(挂失|冻结|止付|改(.*)?密码|重置密码|举报|报案|止付申请|临时限额.*调整)",
+        ],
+        "risk_notice": [
+            r"(不构成投资建议|风险|理财.*非保本|过往业绩不代表未来|自担风险)",
+        ],
+        "compliance_note": [
+            r"(以.*(公告|合同|协议|规定|监管|说明).*(为准)|最终.*为准)",
+        ],
+        "timing_settlement": [
+            r"(T\+\d|工作日|自然日|到账|清算|结算|确认日|重定价日)",
+        ],
+        "fee_or_limit": [
+            r"(费率|手续费|年费|利率|额度|限额|上限|下限)",
+        ],
+        "offline_handling": [
+            r"(网点|柜台|营业厅|到店|现场|预约(到店)?|携带.*(身份证|证件))",
+        ],
+        "channel_guidance": [
+            r"(手机银行|App|网上银行|网银|官方网站|客服热线|955\d{2}|人工客服|视频见证)",
+        ],
+        "ask_for_info": [
+            r"(请提供|需提供|补充.*信息|上传.*材料|准备.*(证件|材料))",
+        ],
+        "fallback_reply": [
+            r"(抱歉.*无法解答|不在服务范围|联系.*人工客服|建议联系客服)",
+        ],
+    },
+    "options": {
+        "chinese_ratio": 0.5,
+    },
+}
+
+
+def _load_viz_cfg() -> dict:
+    """Load viz-tag config from YAML if provided, otherwise use defaults."""
+    cfg_path = os.getenv("P2M_VIZ_TAG_CONFIG")
+    if cfg_path:
+        path = Path(cfg_path)
+        if path.exists():
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                if isinstance(data, dict):
+                    return data
+            except Exception as exc:  # pragma: no cover - IO robustness
+                line_print(f"[WARN] Failed to load viz tag config {path}: {exc}")
+    return _DEFAULT_VIZ_CFG
+
+
+_VIZ_RAW_CFG: dict = _load_viz_cfg()
+_VIZ_PRIORITY: list[str] = list(_VIZ_RAW_CFG.get("priority", []))
+_VIZ_PATTERNS: dict[str, list[re.Pattern]] = {}
+for _tag, _patterns in (_VIZ_RAW_CFG.get("patterns", {}) or {}).items():
+    compiled: list[re.Pattern] = []
+    for _p in _patterns or []:
+        try:
+            compiled.append(re.compile(str(_p), re.I))
+        except re.error:
+            line_print(f"[WARN] Invalid regex for viz tag '{_tag}': {_p}")
+    if compiled:
+        _VIZ_PATTERNS[_tag] = compiled
+
+_CN_CHAR = re.compile(r"[\u4e00-\u9fff]")
+_VIZ_CN_RATIO: float = float((_VIZ_RAW_CFG.get("options", {}) or {}).get("chinese_ratio", 0.5))
+
+
+def _is_chinese_majority(text: str, ratio: float = 0.5) -> bool:
+    if not text:
+        return False
+    cn = len(_CN_CHAR.findall(text))
+    return (cn / max(1, len(text))) >= ratio
 
 
 def _derive_viz_tag(text: str) -> str:
-    """Derive visualization tag from output text."""
+    """Derive a diagnostic viz_tag from output text, using priority + regex."""
     t = (text or "").strip()
     if not t:
-        return "空输出"
-    for name, pat in _POLICY_PATTERNS:
-        if pat.search(t):
-            return name
-    return "一般答复"
+        return "empty_output"
+    if not _is_chinese_majority(t, ratio=_VIZ_CN_RATIO):
+        return "non_chinese"
+
+    # First-match-wins according to configured priority.
+    for tag in _VIZ_PRIORITY:
+        if tag in ("empty_output", "non_chinese", "general_reply"):
+            continue
+        for pat in _VIZ_PATTERNS.get(tag, []):
+            if pat.search(t):
+                return tag
+    return "general_reply"
 
 
 # ========== 小工具 ==========
@@ -343,7 +435,7 @@ def _load_prompt_from_candidates(run_dir: Path):
     return None
 
 
-def _embed_with_ollama(texts, model="nomic-embed-text", host="http://localhost:11434"):
+def _embed_with_ollama(texts, model=DEFAULT_EMBED_MODEL, host="http://localhost:11434"):
     """调用 Ollama Embeddings API 生成向量。"""
     import requests
     url = f"{host}/api/embeddings"
@@ -369,7 +461,7 @@ def _embed_with_ollama_multi(texts, model=None, hosts=None, timeout=60, workers=
     """
     import requests
 
-    model = model or os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    model = model or os.getenv("P2M_OLLAMA_EMBED_MODEL", DEFAULT_EMBED_MODEL)
     hosts = hosts or _get_ollama_hosts()
     assert hosts, "No Ollama host provided."
 
@@ -413,9 +505,9 @@ def _reduce_and_plot(emb, df, color_col="label", method="umap", out_path="synth_
     else:
         xy = reducer.fit_transform(emb)
 
-    # 1) 支持中文的字体回退
-    plt.rcParams["font.sans-serif"] = ["Noto Sans CJK SC", "Noto Sans CJK JP", "SimHei", "WenQuanYi Zen Hei", "Arial Unicode MS"]
-    # 2) 允许负号正常显示
+    # 1) Use a generic sans-serif font to avoid missing CJK font warnings
+    plt.rcParams["font.sans-serif"] = ["DejaVu Sans"]
+    # 2) Allow minus sign to display correctly
     plt.rcParams["axes.unicode_minus"] = False
 
     plt.figure(figsize=(9,7))
@@ -483,13 +575,8 @@ def _reduce_and_plot_v2(emb, df, color_field="viz_tag", method="umap", out_path=
     else:
         xy = reducer.fit_transform(emb)
 
-    # Font for Chinese; allow minus sign
-    plt.rcParams["font.sans-serif"] = [
-        "Noto Sans CJK SC",
-        "SimHei",
-        "WenQuanYi Zen Hei",
-        "Arial Unicode MS",
-    ]
+    # Generic font; allow minus sign
+    plt.rcParams["font.sans-serif"] = ["DejaVu Sans"]
     plt.rcParams["axes.unicode_minus"] = False
 
     # Color field (default 'viz_tag')
@@ -559,7 +646,7 @@ def visualize_generated_dataset_v2(gen_root: Path, run_dir: Path):
         line_print("[WARN] generated dataset is empty; skip viz.")
         return
 
-    embed_model = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    embed_model = os.getenv("P2M_OLLAMA_EMBED_MODEL", DEFAULT_EMBED_MODEL)
     workers = int(os.getenv("P2M_EMBED_WORKERS", "0") or "0")
     emb = _embed_with_ollama_multi(texts, model=embed_model, hosts=_get_ollama_hosts(), workers=workers)
 
@@ -578,7 +665,40 @@ def visualize_generated_dataset_v2(gen_root: Path, run_dir: Path):
     counts = meta["viz_tag"].value_counts().to_dict()
     with (run_dir / "viz_counts.json").open("w", encoding="utf-8") as f:
         json.dump(counts, f, ensure_ascii=False, indent=2)
-    line_print(f"[OK] exported: {run_dir/'viz_meta.csv'}, {run_dir/'viz_counts.json'}")
+
+    # Extra diagnostics: average output length and per-tag samples.
+    try:
+        avg_len = meta.groupby("viz_tag")["out_len"].mean().to_dict()
+        with (run_dir / "avg_len_by_tag.json").open("w", encoding="utf-8") as f:
+            json.dump(avg_len, f, ensure_ascii=False, indent=2)
+    except Exception as exc:  # pragma: no cover - robustness
+        line_print(f"[WARN] Failed to export avg_len_by_tag: {exc}")
+
+    try:
+        samples_dir = run_dir / "sample_by_tag"
+        samples_dir.mkdir(parents=True, exist_ok=True)
+        max_per_tag = 20
+        for tag, group in meta.groupby("viz_tag"):
+            sample = group.head(max_per_tag)
+            path = samples_dir / f"{tag}.jsonl"
+            with path.open("w", encoding="utf-8") as f:
+                for _, row in sample.iterrows():
+                    payload = {
+                        "input": row.get("input", ""),
+                        "output": row.get("output", ""),
+                        "source": row.get("source", ""),
+                        "out_len": int(row.get("out_len", 0)),
+                    }
+                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception as exc:  # pragma: no cover
+        line_print(f"[WARN] Failed to export sample_by_tag: {exc}")
+
+    line_print(
+        f"[OK] exported: {run_dir/'viz_meta.csv'}, "
+        f"{run_dir/'viz_counts.json'}, "
+        f"{run_dir/'avg_len_by_tag.json'}, "
+        f"{run_dir/'sample_by_tag'}"
+    )
 
 
 def _normalize_io_columns(ds):
