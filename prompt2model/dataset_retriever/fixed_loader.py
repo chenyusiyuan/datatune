@@ -116,7 +116,11 @@ class FixedDatasetLoader:
         ds: datasets.Dataset,
         spec: FixedDatasetSpec,
     ) -> datasets.Dataset:
-        """Add canonical columns input_src/output_src/label/source."""
+        """Add canonical columns input_src/output_src/source.
+
+        We intentionally do NOT keep or introduce a ``label`` column here to avoid
+        schema mismatches when concatenating datasets with differing label types.
+        """
 
         def _map_row(example: Dict[str, Any]) -> Dict[str, Any]:
             example["input_src"] = example.get(spec.input_col)
@@ -124,9 +128,11 @@ class FixedDatasetLoader:
                 example["output_src"] = None
             else:
                 example["output_src"] = example.get(spec.output_col)
-            # For downstream visualization and bookkeeping.
-            example.setdefault("label", "retrieved")
+            # For downstream bookkeeping.
             example.setdefault("source", spec.dataset_name)
+            # Drop any existing label to keep schemas consistent downstream.
+            if "label" in example:
+                example.pop("label", None)
             return example
 
         return ds.map(_map_row)
@@ -175,7 +181,10 @@ class FixedDatasetLoader:
             )
             try:
                 hf_ds = datasets.load_dataset(
-                    spec.dataset_name, spec.config_name, split=spec.split
+                    spec.dataset_name,
+                    spec.config_name,
+                    split=spec.split,
+                    trust_remote_code=True,
                 )
             except Exception as e:  # pragma: no cover - network / HF errors
                 self.logger.error(
@@ -214,4 +223,3 @@ class FixedDatasetLoader:
 
 
 __all__ = ["FixedDatasetLoader", "FixedDatasetSpec"]
-

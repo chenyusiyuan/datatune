@@ -126,40 +126,23 @@ def _export_sidecars(ds: datasets.Dataset, out_stem: Path) -> None:
 
 
 def _visualize_dataset(run_dir: Path, ds: datasets.Dataset) -> None:
-    """Generate embeddings + cluster figure for a single dataset."""
+    """Generate embeddings + cluster figure for a single dataset (viz_tag-based)."""
     if len(ds) == 0:
         logger.info("No data to visualize; skipping visualization.")
         return
 
-    # Use the same helpers as the original script for consistency.
-    from p2m import _embed_with_ollama, _reduce_and_plot  # type: ignore[import]
+    # Delegate to the shared viz helper in the root script, which derives
+    # viz_tag from output and colors by viz_tag instead of label.
+    from p2m import visualize_generated_dataset_v2  # type: ignore[import]
 
-    import pandas as pd
-
-    df = ds.to_pandas().copy()
-    if "input" not in df.columns or "output" not in df.columns:
-        logger.warning("Dataset missing input/output columns; skipping visualization.")
+    gen_root = run_dir / "generated_dataset"
+    try:
+        ds.save_to_disk(str(gen_root))
+    except Exception as exc:  # pragma: no cover - IO robustness
+        logger.warning("Failed to save dataset for visualization: %s", exc)
         return
-    if "label" not in df.columns:
-        df["label"] = "retrieved"
-    if "source" not in df.columns:
-        df["source"] = "whitelist"
 
-    df["__text__"] = df["input"].astype(str) + " || " + df["output"].astype(str)
-
-    model = os.getenv("P2M_OLLAMA_EMBED_MODEL", "nomic-embed-text")
-    emb = _embed_with_ollama(df["__text__"].values, model=model)
-
-    import numpy as np
-
-    emb_path = run_dir / "embeddings.npy"
-    np.save(emb_path, emb)
-    df.to_csv(run_dir / "mix_meta.csv", index=False, encoding="utf-8")
-
-    dr_method = os.getenv("P2M_DR_METHOD", "umap")
-    out_path = run_dir / os.getenv("P2M_OUT", "synth_clusters.png")
-    _reduce_and_plot(emb, df, color_col="label", method=dr_method, out_path=str(out_path))
-    logger.info("Cluster figure saved to: %s", out_path)
+    visualize_generated_dataset_v2(gen_root=gen_root, run_dir=run_dir)
 
 
 def run_fixed_pipeline(
@@ -362,7 +345,6 @@ def run_fixed_pipeline(
                     {
                         "input": list(synth_raw["input_col"]),
                         "output": list(synth_raw["output_col"]),
-                        "label": ["synthetic"] * len(synth_raw),
                         "source": ["synthetic"] * len(synth_raw),
                     }
                 )

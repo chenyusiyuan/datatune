@@ -370,7 +370,7 @@ class TransformExecutor:
                 for compatibility with the YAML spec).
 
         Returns:
-            A HF Dataset with columns: input, output, label, source.
+            A HF Dataset with columns: input, output, source.
         """
         del mapping, postprocess_cfg  # currently unused
 
@@ -417,11 +417,13 @@ class TransformExecutor:
 
             out_text = chosen["output"]
             self._accepted_outputs.append(out_text)
+            # We intentionally drop any existing label field and only keep
+            # standardized input/output/source columns to avoid schema
+            # mismatches across datasets.
             records.append(
                 {
                     "input": chosen["input"],
                     "output": out_text,
-                    "label": src_row.get("label", "retrieved"),
                     "source": src_row.get("source", "unknown"),
                 }
             )
@@ -434,14 +436,13 @@ class TransformExecutor:
 
         if not records:
             return datasets.Dataset.from_dict(
-                {"input": [], "output": [], "label": [], "source": []}
+                {"input": [], "output": [], "source": []}
             )
 
         return datasets.Dataset.from_dict(
             {
                 "input": [r["input"] for r in records],
                 "output": [r["output"] for r in records],
-                "label": [r["label"] for r in records],
                 "source": [r["source"] for r in records],
             }
         )

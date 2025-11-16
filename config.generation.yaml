@@ -44,10 +44,10 @@ formatting:
 limits:
   # 检索数量：对每个白名单数据集，在过滤之后最多保留多少条样本参与转换。
   # -1 表示不设上限；0 表示跳过该数据集（不做转换）。
-  max_retrieved_per_dataset: 500
+  max_retrieved_per_dataset: 10
   # 合成数据数量：在“检索+转换”之后，额外用指令模型纯合成多少条样本。
   # 0 表示不做纯合成；N>0 表示合成 N 条。
-  synthetic_num_examples: 1500
+  synthetic_num_examples: 10
 
 logging:
   save_plan: true
